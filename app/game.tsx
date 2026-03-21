@@ -21,20 +21,31 @@ import { ComboDisplay } from '../components/ComboDisplay';
 import { GameOverOverlay } from '../components/GameOverOverlay';
 import { TutorialOverlay } from '../components/TutorialOverlay';
 import { ClearParticleEffect, styles as particleStyles } from '../components/ClearParticle';
+import { ShockwaveEffect } from '../components/ShockwaveEffect';
 import { formatNumber } from '../utils/formatNumber';
-import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver } from '../utils/haptics';
+import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
+import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, resumeAudioContext, setSEEnabled, setSEVolume } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
-import { ClearEvent, Position } from '../types';
+import { ClearEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS } from '../constants/grid';
 
 // Unique ID counter for particle effects
 let particleIdCounter = 0;
+// Unique ID counter for shockwave effects
+let shockwaveIdCounter = 0;
 
 interface ParticleInstance {
   id: number;
   row: number;
   col: number;
   count: number;
+}
+
+interface ShockwaveInstance {
+  id: number;
+  row: number;
+  col: number;
+  comboCount: number;
 }
 
 export default function GameScreen() {
@@ -51,6 +62,10 @@ export default function GameScreen() {
   const prevFeverRef = useRef(false);
   const prevClearEventRef = useRef<ClearEvent | null>(null);
   const [particles, setParticles] = useState<ParticleInstance[]>([]);
+  const [shockwaves, setShockwaves] = useState<ShockwaveInstance[]>([]);
+
+  // 5+ combo fullscreen flash
+  const flashOpacity = useSharedValue(0);
 
   // Screen shake shared value
   const shakeX = useSharedValue(0);
@@ -71,6 +86,22 @@ export default function GameScreen() {
     saveGameResult,
   } = useGameEngine(dailySeed);
 
+  // Load settings and apply to sound/haptics modules
+  useEffect(() => {
+    (async () => {
+      const saved = await storage.getItem<UserSettings>(STORAGE_KEYS.SETTINGS, {
+        bgmEnabled: true,
+        seEnabled: true,
+        hapticsEnabled: true,
+        bgmVolume: 0.7,
+        seVolume: 0.8,
+      });
+      setSEEnabled(saved.seEnabled);
+      setSEVolume(saved.seVolume);
+      setHapticsEnabled(saved.hapticsEnabled);
+    })();
+  }, []);
+
   // Check if tutorial should be shown
   useEffect(() => {
     (async () => {
@@ -86,16 +117,17 @@ export default function GameScreen() {
     startGame();
   }, []);
 
-  // Haptics feedback for game events
+  // Haptics + sound feedback for game events
   useEffect(() => {
-    // Game over haptic
+    // Game over haptic + sound
     if (gameState.phase === 'gameover' && prevPhaseRef.current !== 'gameover') {
       hapticGameOver();
+      playGameOverSound();
     }
     prevPhaseRef.current = gameState.phase;
   }, [gameState.phase]);
 
-  // Enhanced combo haptics + screen shake
+  // Enhanced combo haptics + screen shake + combo sound
   useEffect(() => {
     const comboCount = gameState.combo.count;
     if (comboCount > prevComboRef.current && comboCount >= 2) {
@@ -104,6 +136,9 @@ export default function GameScreen() {
       } else {
         hapticCombo();
       }
+
+      // Combo sound with rising pitch
+      playComboSound(comboCount);
 
       // Screen shake based on combo
       const intensity = comboCount >= 10 ? 15 : comboCount >= 5 ? 8 : 3;
@@ -121,14 +156,23 @@ export default function GameScreen() {
         withTiming(-intensity * 0.3, { duration }),
         withTiming(0, { duration }),
       );
+
+      // 5+ combo: fullscreen white flash
+      if (comboCount >= 5) {
+        flashOpacity.value = withSequence(
+          withTiming(0.5, { duration: 50 }),
+          withTiming(0, { duration: 50 }),
+        );
+      }
     }
     prevComboRef.current = comboCount;
   }, [gameState.combo.count]);
 
-  // Fever haptic + background animation
+  // Fever haptic + sound + background animation
   useEffect(() => {
     if (gameState.fever.isActive && !prevFeverRef.current) {
       hapticFever();
+      playFeverSound();
       // Start fever hue rotation
       feverHue.value = 0;
       feverHue.value = withRepeat(
@@ -143,16 +187,20 @@ export default function GameScreen() {
     prevFeverRef.current = gameState.fever.isActive;
   }, [gameState.fever.isActive]);
 
-  // Clear event: particles + special block haptic
+  // Clear event: particles + shockwave + special block haptic + sound
   useEffect(() => {
     const clearEvent = gameState.lastClearEvent;
     if (clearEvent && clearEvent !== prevClearEventRef.current) {
       prevClearEventRef.current = clearEvent;
 
-      // Special block haptic
+      // Special block haptic + sound
       if (clearEvent.hadSpecialBlock) {
         hapticSpecialBlock();
+        playSpecialBlockSound();
       }
+
+      // Clear sound
+      playClearSound();
 
       // Spawn particles at cleared positions
       const particleCount = clearEvent.comboCount >= 3 ? 12 : 7;
@@ -163,11 +211,28 @@ export default function GameScreen() {
         count: particleCount,
       }));
       setParticles(prev => [...prev, ...newParticles]);
+
+      // Spawn shockwave at the center of cleared cells
+      // Use the first cleared position as the shockwave origin
+      if (clearEvent.positions.length > 0) {
+        const centerPos = clearEvent.positions[Math.floor(clearEvent.positions.length / 2)];
+        const newShockwave: ShockwaveInstance = {
+          id: shockwaveIdCounter++,
+          row: centerPos.row,
+          col: centerPos.col,
+          comboCount: clearEvent.comboCount,
+        };
+        setShockwaves(prev => [...prev, newShockwave]);
+      }
     }
   }, [gameState.lastClearEvent]);
 
   const removeParticle = useCallback((id: number) => {
     setParticles(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const removeShockwave = useCallback((id: number) => {
+    setShockwaves(prev => prev.filter(s => s.id !== id));
   }, []);
 
   const shakeStyle = useAnimatedStyle(() => ({
@@ -188,6 +253,10 @@ export default function GameScreen() {
     };
   });
 
+  const flashStyle = useAnimatedStyle(() => ({
+    opacity: flashOpacity.value,
+  }));
+
   const handleDismissTutorial = useCallback(async () => {
     setShowTutorial(false);
     await storage.setString(STORAGE_KEYS.TUTORIAL_SEEN, '1');
@@ -203,12 +272,21 @@ export default function GameScreen() {
   }, [revive]);
 
   const handleSwipeEndWithHaptic = useCallback(() => {
+    // Resume AudioContext on first user gesture (required by browsers)
+    resumeAudioContext();
+
     // Check if the current swipe will clear (sum === 10 and at least 2 cells)
     if (gameState.swipePath?.isComplete && (gameState.swipePath?.cells.length ?? 0) >= 2) {
       hapticClear();
     }
     handleSwipeEnd();
   }, [handleSwipeEnd, gameState.swipePath]);
+
+  // Also resume audio context on swipe start (user gesture)
+  const handleSwipeStartWithAudio = useCallback((pos: Position) => {
+    resumeAudioContext();
+    handleSwipeStart(pos);
+  }, [handleSwipeStart]);
 
   const generateWordleGrid = useCallback(() => {
     const history = gameState.clearedCellHistory;
@@ -283,6 +361,9 @@ export default function GameScreen() {
         <Animated.View style={[styles.feverOverlay, feverBgStyle]} />
       )}
 
+      {/* 5+ combo fullscreen white flash */}
+      <Animated.View style={[styles.flashOverlay, flashStyle]} pointerEvents="none" />
+
       {/* Score bar */}
       <ScoreBar
         score={gameState.score.current}
@@ -301,7 +382,7 @@ export default function GameScreen() {
           grid={gameState.grid}
           colors={colors}
           warningRowThreshold={gameState.difficulty.warningRowThreshold}
-          onSwipeStart={handleSwipeStart}
+          onSwipeStart={handleSwipeStartWithAudio}
           onSwipeMove={handleSwipeMove}
           onSwipeEnd={handleSwipeEndWithHaptic}
           disabled={!isPlaying || gameState.isPaused || showTutorial}
@@ -316,6 +397,19 @@ export default function GameScreen() {
               col={p.col}
               count={p.count}
               onComplete={() => removeParticle(p.id)}
+            />
+          ))}
+        </View>
+
+        {/* Shockwave overlay */}
+        <View style={styles.shockwaveContainer}>
+          {shockwaves.map(s => (
+            <ShockwaveEffect
+              key={s.id}
+              row={s.row}
+              col={s.col}
+              comboCount={s.comboCount}
+              onComplete={() => removeShockwave(s.id)}
             />
           ))}
         </View>
@@ -397,6 +491,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 1,
     pointerEvents: 'none',
+  },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    zIndex: 200,
+    pointerEvents: 'none',
+  },
+  shockwaveContainer: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+    zIndex: 60,
   },
   sumContainer: {
     alignItems: 'center',
