@@ -362,12 +362,15 @@ export default function GameScreen() {
     maxChain: number,
     maxChainLevel: number,
     isNewRecord: boolean,
+    wordleGrid: string,
   ): string => {
     const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
     return [
       `${recordMark}数字サバイバル`,
       `スコア: ${score.toLocaleString()}`,
       `最大チェーン: ${maxChain}連鎖（${maxChainLevel}段階カスケード）`,
+      '',
+      wordleGrid,
       '#数字サバイバル #NumberSurvivor',
     ].join('\n');
   }, []);
@@ -377,12 +380,13 @@ export default function GameScreen() {
       const score = gameState.score;
       const maxChainLevel = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : 1;
       const isNewRecord = score.current > 0 && score.current >= score.best;
-      const message = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord);
+      const wordleGrid = generateWordleGrid();
+      const message = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid);
       await Share.share({ message });
     } catch {
       // ignore
     }
-  }, [gameState.score, gameState.maxChainLevel, generateShareText]);
+  }, [gameState.score, gameState.maxChainLevel, generateShareText, generateWordleGrid]);
 
   const handleHome = useCallback(() => {
     router.replace('/');
