@@ -584,6 +584,17 @@ export function useGameEngine(dailySeed?: number) {
     });
     ranking.sort((a, b) => b.score - a.score);
     await storage.setItem(STORAGE_KEYS.RANKING_ALL, ranking.slice(0, 20));
+
+    // Daily streak: 今日初プレイなら加算
+    const todayKey = new Date().toISOString().split('T')[0]; // 例: "2026-03-21"
+    const lastPlayedDay = await storage.getString('@ns:last_played_day', '');
+    if (lastPlayedDay !== todayKey) {
+      const prevStreak = await storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const newStreak = lastPlayedDay === yesterday ? prevStreak + 1 : 1;
+      await storage.setNumber(STORAGE_KEYS.DAILY_STREAK, newStreak);
+      await storage.setString('@ns:last_played_day', todayKey);
+    }
   }, [gameState, storage]);
 
   return {

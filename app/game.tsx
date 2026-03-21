@@ -62,6 +62,10 @@ export default function GameScreen() {
   const [showTutorial, setShowTutorial] = useState(false);
   const prevPhaseRef = useRef<string>('idle');
   const prevComboRef = useRef(0);
+  const dailyStreakRef = useRef(0);
+  useEffect(() => {
+    storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0).then(v => { dailyStreakRef.current = v; });
+  }, []);
   const prevFeverRef = useRef(false);
   const prevClearEventRef = useRef<ClearEvent | null>(null);
   const [particles, setParticles] = useState<ParticleInstance[]>([]);
@@ -555,6 +559,7 @@ export default function GameScreen() {
           onHome={handleHome}
           canRevive={!revivalUsed}
           isNewBest={isNewBest}
+          dailyStreak={dailyStreakRef.current}
         />
       )}
     </SafeAreaView>

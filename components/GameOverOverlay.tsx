@@ -16,10 +16,11 @@ interface Props {
   onHome: () => void;
   canRevive: boolean;
   isNewBest: boolean;
+  dailyStreak?: number;
 }
 
 export const GameOverOverlay: React.FC<Props> = ({
-  score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest,
+  score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest, dailyStreak,
 }) => {
   const earnedCoins = scoreToCoins(score.current);
   const [streakDays, setStreakDays] = useState(0);
@@ -132,6 +133,12 @@ export const GameOverOverlay: React.FC<Props> = ({
         >
           <Text style={styles.buttonText}>📤 シェア</Text>
         </TouchableOpacity>
+
+        {dailyStreak !== undefined && dailyStreak >= 2 && (
+          <Text style={{ color: '#FF8C00', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+            {`\uD83D\uDD25 ${dailyStreak}\u65E5\u9023\u7D9A\u30D7\u30EC\u30A4\u4E2D\uFF01`}
+          </Text>
+        )}
 
         <TouchableOpacity
           style={[styles.buttonOutline, { borderColor: colors.accentColor }]}
