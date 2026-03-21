@@ -267,6 +267,22 @@ export function useGameEngine(dailySeed?: number) {
   }, []);
 
   const runCascade = useCallback((grid: Grid, chainLevel: number, accumulatedScore: number, accumulatedCleared: number) => {
+    // 最大3回のカスケードループ（無限ループ防止）
+    const cascadeCount = chainLevel - 1; // chainLevel 2 = cascadeCount 1
+    if (cascadeCount >= 3) {
+      // 上限到達 - カスケード終了
+      setGameState(prev => {
+        if (prev.phase !== 'cascading') return prev;
+        const restorePhase: GamePhase = prev.fever.isActive ? 'fever' : 'playing';
+        return {
+          ...prev,
+          phase: restorePhase,
+          chainLevel: 0,
+        };
+      });
+      return;
+    }
+
     const autoMatches = findAutoMatches(grid);
     if (autoMatches.length === 0) {
       // Cascade finished - restore to playing phase
@@ -282,8 +298,8 @@ export function useGameEngine(dailySeed?: number) {
       return;
     }
 
-    // 300ms delay for visual cascade effect (500ms for 3+ chains = slow-motion)
-    const delay = chainLevel >= 3 ? 500 : 300;
+    // 300ms delay for visual cascade effect
+    const delay = 300;
 
     setTimeout(() => {
       setGameState(prev => {
@@ -324,7 +340,7 @@ export function useGameEngine(dailySeed?: number) {
           hadSpecialBlock: false,
         };
 
-        // Chain event for popup display
+        // Chain event for popup display (連鎖カウンター表示)
         const lastChainEvent: ChainEvent = {
           level: chainLevel,
           score: chainScore,
@@ -334,6 +350,11 @@ export function useGameEngine(dailySeed?: number) {
         const newScore = prev.score.current + chainScore;
         const newBest = Math.max(prev.score.best, newScore);
         const maxChainLevel = Math.max(prev.maxChainLevel, chainLevel);
+
+        // 次のカスケードを新しいgridで実行
+        setTimeout(() => {
+          runCascade(newGrid, chainLevel + 1, newAccumulatedScore, newAccumulatedCleared);
+        }, 50);
 
         return {
           ...prev,
@@ -352,40 +373,6 @@ export function useGameEngine(dailySeed?: number) {
           maxChainLevel,
         };
       });
-
-      // Check for more cascades after this one
-      // Need to read grid after state update - use a short delay
-      setTimeout(() => {
-        setGameState(prev => {
-          if (prev.phase !== 'cascading') return prev;
-          // Schedule next cascade check
-          const nextMatches = findAutoMatches(prev.grid);
-          if (nextMatches.length === 0) {
-            // Cascade finished
-            const restorePhase: GamePhase = prev.fever.isActive ? 'fever' : 'playing';
-            return {
-              ...prev,
-              phase: restorePhase,
-              chainLevel: 0,
-            };
-          }
-          // Continue cascade - trigger next level
-          return prev;
-        });
-        // Read current state to decide if we continue
-        setGameState(prev => {
-          if (prev.phase === 'cascading') {
-            const nextMatches = findAutoMatches(prev.grid);
-            if (nextMatches.length > 0) {
-              // Schedule next cascade (can't recurse in setState, use timeout)
-              setTimeout(() => {
-                runCascade(prev.grid, chainLevel + 1, accumulatedScore + 0, accumulatedCleared + 0);
-              }, 0);
-            }
-          }
-          return prev;
-        });
-      }, 50);
     }, delay);
   }, []);
 
@@ -509,14 +496,15 @@ export function useGameEngine(dailySeed?: number) {
     });
   }, []);
 
-  // Cascade loop effect - runs when phase becomes 'cascading'
+  // Cascade loop effect - runs when phase first becomes 'cascading' (chainLevel === 0 -> 1)
   useEffect(() => {
     if (gameState.phase !== 'cascading') return;
+    // Only trigger the initial cascade when chainLevel is set to 1 by handleSwipeEnd
+    if (gameState.chainLevel !== 1) return;
 
     const autoMatches = findAutoMatches(gameState.grid);
     if (autoMatches.length > 0) {
-      const nextChainLevel = gameState.chainLevel + 1;
-      runCascade(gameState.grid, nextChainLevel, 0, 0);
+      runCascade(gameState.grid, gameState.chainLevel + 1, 0, 0);
     } else {
       // No more matches, end cascade
       setGameState(prev => ({
@@ -525,7 +513,7 @@ export function useGameEngine(dailySeed?: number) {
         chainLevel: 0,
       }));
     }
-  }, [gameState.phase === 'cascading' && gameState.chainLevel]);
+  }, [gameState.phase, gameState.chainLevel]);
 
   const revive = useCallback(() => {
     if (revivalUsedRef.current) return false;
