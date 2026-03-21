@@ -12,6 +12,7 @@ interface ShareImageParams {
     accentColor: string;
     cellColors: Record<string, string>;
   };
+  dailyStreak?: number;  // ← 追加
 }
 
 export async function generateScoreCard(params: ShareImageParams): Promise<Blob | null> {
@@ -76,11 +77,22 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
     });
   }
 
+  // Streak badge（新規追加）
+  if (params.dailyStreak && params.dailyStreak >= 2) {
+    ctx.fillStyle = 'rgba(255,107,53,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 150, H - 110, 300, 55, 8);
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🔥 ${params.dailyStreak}日連続達成!`, W / 2, H - 74);
+  }
   // Hashtags at bottom
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.font = '26px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('#数字サバイバル  #NumberSurvivor', W / 2, H - 30);
+  ctx.fillText('#数字サバイバル #数字ゲーム #NumberSurvivor', W / 2, H - 30);
 
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png');

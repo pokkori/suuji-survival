@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
@@ -9,6 +9,7 @@ import { DailyChallenge } from '../types';
 import { getDateKey } from '../utils/dateKey';
 import { getDailyTargetScore, dateToSeed } from '../engine/rng';
 import { formatNumber } from '../utils/formatNumber';
+import { generateScoreCard } from '../utils/shareImage';
 
 export default function DailyScreen() {
   const router = useRouter();
@@ -44,6 +45,26 @@ export default function DailyScreen() {
       }
     })();
   }, []);
+
+  const handleDailyShare = async () => {
+    if (!challenge) return;
+    const blob = await generateScoreCard({
+      score: challenge.bestScore ?? 0,
+      maxChain: 0,
+      blocksCleared: 0,
+      isNewRecord: false,
+      wordleGrid: '',
+      themeColors: { background: colors.background, accentColor: colors.accentColor, cellColors: {} },
+      dailyStreak: streak,
+    });
+    const text = `数字サバイバル デイリー達成🏆 スコア: ${(challenge.bestScore ?? 0).toLocaleString()} ${streak}日連続🔥 #数字サバイバル`;
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share && blob) {
+      const file = new File([blob], 'number-survivor-daily.png', { type: 'image/png' });
+      await navigator.share({ text, files: [file] });
+    } else if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
+      await navigator.share({ text });
+    }
+  };
 
   const handleStart = useCallback(() => {
     if (!challenge) return;
@@ -105,6 +126,16 @@ export default function DailyScreen() {
             <Text style={[styles.attemptsText, { color: colors.cellTextColor }]}>
               挑戦回数: {challenge.attempts}
             </Text>
+
+            {challenge.completed && (
+              <View style={styles.completedBanner}>
+                <Text style={styles.completedTitle}>🎉 本日のチャレンジ達成！</Text>
+                <Text style={styles.completedScore}>スコア: {challenge.bestScore?.toLocaleString()}</Text>
+                <TouchableOpacity style={styles.shareBtn} onPress={handleDailyShare}>
+                  <Text style={styles.shareBtnText}>📸 結果をシェア</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -176,4 +207,9 @@ const styles = StyleSheet.create({
   dayCol: { alignItems: 'center' },
   dayName: { fontSize: 14, marginBottom: 4 },
   dayStatus: { fontSize: 18 },
+  completedBanner: { backgroundColor: 'rgba(0,255,170,0.15)', borderRadius: 12, padding: 16, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: 'rgba(0,255,170,0.4)', marginTop: 12 },
+  completedTitle: { color: '#00FFAA', fontSize: 20, fontWeight: 'bold' },
+  completedScore: { color: '#FFFFFF', fontSize: 16 },
+  shareBtn: { backgroundColor: '#00FFAA', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20 },
+  shareBtnText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
 });

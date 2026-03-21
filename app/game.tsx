@@ -385,6 +385,9 @@ export default function GameScreen() {
       const baseText = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid);
       const message = wordleGrid ? `${baseText}` : baseText;
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
+        const dailyStreak = await storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0);
+        const streakSuffix = dailyStreak >= 2 ? ` ${dailyStreak}日連続🔥` : '';
+        const enhancedMessage = `数字サバイバル スコア: ${score.current.toLocaleString()}${streakSuffix}\n最大チェーン: ${score.maxChain} #数字サバイバル #数字ゲーム`;
         const blob = await generateScoreCard({
           score: score.current,
           maxChain: score.maxChain,
@@ -392,6 +395,7 @@ export default function GameScreen() {
           isNewRecord,
           wordleGrid: wordleGrid || '',
           themeColors: { background: '#0a0a1a', accentColor: '#00FFAA', cellColors: {} },
+          dailyStreak,
         });
         if (
           blob &&
@@ -399,9 +403,9 @@ export default function GameScreen() {
           navigator.canShare({ files: [new File([blob], 'score.png', { type: 'image/png' })] })
         ) {
           const file = new File([blob], 'score.png', { type: 'image/png' });
-          await navigator.share({ files: [file], text: message });
+          await navigator.share({ files: [file], text: enhancedMessage });
         } else {
-          await navigator.share({ text: message });
+          await navigator.share({ text: enhancedMessage });
         }
       } else {
         await Share.share({ message });
