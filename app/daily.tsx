@@ -127,15 +127,24 @@ export default function DailyScreen() {
               挑戦回数: {challenge.attempts}
             </Text>
 
-            {challenge.completed && (
+            {challenge.completed ? (
               <View style={styles.completedBanner}>
                 <Text style={styles.completedTitle}>🎉 本日のチャレンジ達成！</Text>
                 <Text style={styles.completedScore}>スコア: {challenge.bestScore?.toLocaleString()}</Text>
                 <TouchableOpacity style={styles.shareBtn} onPress={handleDailyShare}>
-                  <Text style={styles.shareBtnText}>📸 結果をシェア</Text>
+                  <Text style={styles.shareBtnText}>📸 達成をシェア🔥</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : challenge.bestScore > 0 ? (
+              <View style={[styles.completedBanner, { borderColor: 'rgba(0,255,170,0.2)', backgroundColor: 'rgba(0,255,170,0.05)' }]}>
+                <Text style={[styles.completedTitle, { color: colors.accentColor, fontSize: 16 }]}>
+                  挑戦中 — ベスト: {challenge.bestScore.toLocaleString()}
+                </Text>
+                <TouchableOpacity style={[styles.shareBtn, { backgroundColor: colors.accentColor + '99' }]} onPress={handleDailyShare}>
+                  <Text style={styles.shareBtnText}>📤 途中経過をシェア</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         )}
 

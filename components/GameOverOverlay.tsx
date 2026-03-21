@@ -28,41 +28,28 @@ export const GameOverOverlay: React.FC<Props> = ({
   useEffect(() => {
     (async () => {
       try {
-        // Read streak data: JSON { count: number, lastDate: string }
-        const raw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_STREAK);
+        // 統一形式: DAILY_STREAK = 数値文字列 (String(count))
+        // DAILY_STREAK_DATE = "YYYY-MM-DD" 文字列
+        const STREAK_DATE_KEY = STORAGE_KEYS.DAILY_STREAK + '_date'; // "@ns:daily_streak_date"
+        const countRaw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_STREAK);
+        const dateRaw = await AsyncStorage.getItem(STREAK_DATE_KEY);
         const today = new Date().toISOString().slice(0, 10);
-        if (raw) {
-          const data = JSON.parse(raw) as { count: number; lastDate: string };
-          const last = new Date(data.lastDate);
-          const now = new Date(today);
-          const diffDays = Math.round((now.getTime() - last.getTime()) / 86400000);
-          if (diffDays === 0) {
-            // Same day: keep current streak
-            setStreakDays(data.count);
-          } else if (diffDays === 1) {
-            // Next consecutive day: increment
-            const newCount = data.count + 1;
-            await AsyncStorage.setItem(
-              STORAGE_KEYS.DAILY_STREAK,
-              JSON.stringify({ count: newCount, lastDate: today }),
-            );
-            setStreakDays(newCount);
-          } else {
-            // Streak broken: reset to 1
-            await AsyncStorage.setItem(
-              STORAGE_KEYS.DAILY_STREAK,
-              JSON.stringify({ count: 1, lastDate: today }),
-            );
-            setStreakDays(1);
-          }
+        const count = countRaw !== null ? Number(countRaw) : 0;
+        const lastDate = dateRaw ?? '';
+        const diffDays = lastDate
+          ? Math.round((new Date(today).getTime() - new Date(lastDate).getTime()) / 86400000)
+          : -1;
+        let newCount: number;
+        if (diffDays === 0) {
+          newCount = count;
+        } else if (diffDays === 1) {
+          newCount = count + 1;
         } else {
-          // First ever play
-          await AsyncStorage.setItem(
-            STORAGE_KEYS.DAILY_STREAK,
-            JSON.stringify({ count: 1, lastDate: today }),
-          );
-          setStreakDays(1);
+          newCount = 1;
         }
+        await AsyncStorage.setItem(STORAGE_KEYS.DAILY_STREAK, String(newCount));
+        await AsyncStorage.setItem(STREAK_DATE_KEY, today);
+        setStreakDays(newCount);
       } catch {
         // silently fail
       }
@@ -128,10 +115,16 @@ export const GameOverOverlay: React.FC<Props> = ({
         )}
 
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: '#666' }]}
+          style={[styles.button, {
+            backgroundColor: streakDays >= 2 ? '#FF6B35' : '#666',
+          }]}
           onPress={onShare}
         >
-          <Text style={styles.buttonText}>📤 シェア</Text>
+          <Text style={styles.buttonText}>
+            {streakDays >= 2
+              ? `📤 ${streakDays}日連続をシェア！`
+              : '📤 シェア'}
+          </Text>
         </TouchableOpacity>
 
         {dailyStreak !== undefined && dailyStreak >= 2 && (
