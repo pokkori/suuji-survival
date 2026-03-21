@@ -4,6 +4,8 @@
     "slug": "number-survivor",
     "version": "1.0.0",
     "orientation": "portrait",
+    "description": "数字サバイバル - スワイプして合計10にする数字パズル！落ちてくる数字を消してスコアを稼げ。3段階カスケードで爆発スコア！フィーバーモードで一気にクリア！キーワード: 数字パズル スワイプゲーム 数字ゲーム パズルゲーム 数学ゲーム",
+    "keywords": ["数字サバイバル", "数字パズル", "スワイプゲーム", "NumberSurvivor", "数字ゲーム"],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "number-survivor",
@@ -27,7 +29,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-sharing"
     ]
   }
 }

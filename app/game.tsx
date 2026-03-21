@@ -357,25 +357,32 @@ export default function GameScreen() {
     return rows.join('\n');
   }, [gameState.clearedCellHistory]);
 
+  const generateShareText = useCallback((
+    score: number,
+    maxChain: number,
+    maxChainLevel: number,
+    isNewRecord: boolean,
+  ): string => {
+    const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
+    return [
+      `${recordMark}数字サバイバル`,
+      `スコア: ${score.toLocaleString()}`,
+      `最大チェーン: ${maxChain}連鎖（${maxChainLevel}段階カスケード）`,
+      '#数字サバイバル #NumberSurvivor',
+    ].join('\n');
+  }, []);
+
   const handleShare = useCallback(async () => {
     try {
       const score = gameState.score;
-      const dayNum = Math.floor(Date.now() / 86400000);
-      const grid = generateWordleGrid();
-
-      const maxChain = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : score.maxChain;
-      const message = [
-        `数字サバイバル #${dayNum % 1000}`,
-        `\uD83D\uDD25 ${formatNumber(score.current)}pts | 最大${maxChain}連鎖`,
-        grid,
-        '#数字サバイバル',
-      ].join('\n');
-
+      const maxChainLevel = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : 1;
+      const isNewRecord = score.current > 0 && score.current >= score.best;
+      const message = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord);
       await Share.share({ message });
     } catch {
       // ignore
     }
-  }, [gameState.score, generateWordleGrid]);
+  }, [gameState.score, gameState.maxChainLevel, generateShareText]);
 
   const handleHome = useCallback(() => {
     router.replace('/');

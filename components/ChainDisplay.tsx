@@ -4,6 +4,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   withSequence,
   withDelay,
 } from 'react-native-reanimated';
@@ -32,7 +33,7 @@ function getChainFontSize(level: number): number {
 
 export const ChainDisplay: React.FC<Props> = ({ chainEvent }) => {
   const opacity = useSharedValue(0);
-  const scale = useSharedValue(0);
+  const scale = useSharedValue(0.5);
   const prevEventRef = useRef<ChainEvent | null>(null);
 
   useEffect(() => {
@@ -40,20 +41,20 @@ export const ChainDisplay: React.FC<Props> = ({ chainEvent }) => {
     if (chainEvent.level < 2) return; // Only show for 2+ chains
     prevEventRef.current = chainEvent;
 
-    // Reset
+    // Reset to small scale
     opacity.value = 0;
-    scale.value = 0;
+    scale.value = 0.5;
 
-    // Bounce in: scale 0 -> 1.2 -> 1.0
+    // Bounce in: scale 0.5 -> 1.3 -> 1.0 using spring
     scale.value = withSequence(
-      withTiming(1.2, { duration: 150 }),
-      withTiming(1.0, { duration: 100 }),
+      withSpring(1.3, { damping: 6, stiffness: 300 }),
+      withSpring(1.0, { damping: 10, stiffness: 300 }),
     );
 
-    // Fade in then fade out after 300ms
+    // Fade in then fade out after 1000ms
     opacity.value = withSequence(
       withTiming(1, { duration: 100 }),
-      withDelay(300, withTiming(0, { duration: 300 })),
+      withDelay(1000, withTiming(0, { duration: 400 })),
     );
   }, [chainEvent]);
 
@@ -75,12 +76,17 @@ export const ChainDisplay: React.FC<Props> = ({ chainEvent }) => {
       <Animated.Text style={[styles.chainText, { color, fontSize, textShadowColor }]}>
         {chainEvent.level}連鎖{'!'.repeat(Math.min(chainEvent.level, 5))}
       </Animated.Text>
+      {chainEvent.level >= 2 && (
+        <Animated.Text style={[styles.cascadeText, { color: '#FF6B6B' }]}>
+          {chainEvent.level}段カスケード！
+        </Animated.Text>
+      )}
       <Animated.Text style={[styles.scoreText, { color }]}>
-        +{chainEvent.score}
+        +{chainEvent.score.toLocaleString()}
       </Animated.Text>
       {chainEvent.totalScore > chainEvent.score && (
         <Animated.Text style={[styles.totalText, { color }]}>
-          TOTAL: +{chainEvent.totalScore}
+          TOTAL: +{chainEvent.totalScore.toLocaleString()}
         </Animated.Text>
       )}
     </Animated.View>
@@ -100,6 +106,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 6,
+  },
+  cascadeText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   scoreText: {
     fontSize: 24,

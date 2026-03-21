@@ -9,9 +9,18 @@ import Animated, {
   FadeIn,
   ZoomOut,
 } from 'react-native-reanimated';
+import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { Cell as CellType, ThemeColors } from '../types';
 import { CELL_SIZE } from '../constants/grid';
 import { SPECIAL_BLOCK_ICONS, SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
+
+function lightenColor(hex: string, amount: number): string {
+  const clean = hex.replace('#', '');
+  const r = Math.min(255, parseInt(clean.slice(0, 2), 16) + amount);
+  const g = Math.min(255, parseInt(clean.slice(2, 4), 16) + amount);
+  const b = Math.min(255, parseInt(clean.slice(4, 6), 16) + amount);
+  return `rgb(${r},${g},${b})`;
+}
 
 interface Props {
   cell: CellType;
@@ -53,6 +62,10 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
     label = SPECIAL_BLOCK_ICONS[content.special];
   }
 
+  const isHexColor = bgColor.startsWith('#') && bgColor.length === 7;
+  const gradientId = `grad-${content.type === 'number' ? content.value : content.special}`;
+  const lightColor = isHexColor ? lightenColor(bgColor, 40) : bgColor;
+
   return (
     <Animated.View
       entering={FadeIn.duration(200).springify()}
@@ -60,7 +73,6 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
       style={[
         styles.cell,
         {
-          backgroundColor: bgColor,
           borderColor: isSelected ? colors.swipePathColor : 'transparent',
           borderWidth: isSelected ? 3 : 0,
           opacity: isDanger ? 0.7 : 1,
@@ -69,6 +81,15 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
         animatedStyle,
       ]}
     >
+      <Svg style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={lightColor} stopOpacity="1" />
+            <Stop offset="1" stopColor={bgColor} stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" rx="8" fill={`url(#${gradientId})`} />
+      </Svg>
       <Animated.Text
         style={[
           styles.text,
