@@ -116,6 +116,13 @@ export type GamePhase =
   | 'fever'
   | 'gameover';
 
+/** Positions that were cleared in a single clear event */
+export interface ClearEvent {
+  positions: Position[];
+  comboCount: number;
+  hadSpecialBlock: boolean;
+}
+
 export interface GameState {
   phase: GamePhase;
   grid: Grid;
@@ -128,6 +135,10 @@ export interface GameState {
   swipePath: SwipePath | null;
   isPaused: boolean;
   freezeRemainingMs: number;
+  /** History of all cleared cell positions for Wordle share grid */
+  clearedCellHistory: boolean[][];
+  /** Latest clear event for particle/shake effects */
+  lastClearEvent: ClearEvent | null;
 }
 
 // ============================================

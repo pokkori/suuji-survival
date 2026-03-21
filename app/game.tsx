@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withRepeat,
+  Easing,
+  cancelAnimation,
+} from 'react-native-reanimated';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameEngine } from '../hooks/useGameEngine';
@@ -11,9 +20,22 @@ import { NextQueue } from '../components/NextQueue';
 import { ComboDisplay } from '../components/ComboDisplay';
 import { GameOverOverlay } from '../components/GameOverOverlay';
 import { TutorialOverlay } from '../components/TutorialOverlay';
+import { ClearParticleEffect, styles as particleStyles } from '../components/ClearParticle';
 import { formatNumber } from '../utils/formatNumber';
-import { hapticClear, hapticCombo, hapticFever, hapticGameOver } from '../utils/haptics';
+import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver } from '../utils/haptics';
 import { STORAGE_KEYS } from '../constants/storage';
+import { ClearEvent, Position } from '../types';
+import { COLS, ROWS } from '../constants/grid';
+
+// Unique ID counter for particle effects
+let particleIdCounter = 0;
+
+interface ParticleInstance {
+  id: number;
+  row: number;
+  col: number;
+  count: number;
+}
 
 export default function GameScreen() {
   const router = useRouter();
@@ -27,6 +49,15 @@ export default function GameScreen() {
   const prevPhaseRef = useRef<string>('idle');
   const prevComboRef = useRef(0);
   const prevFeverRef = useRef(false);
+  const prevClearEventRef = useRef<ClearEvent | null>(null);
+  const [particles, setParticles] = useState<ParticleInstance[]>([]);
+
+  // Screen shake shared value
+  const shakeX = useSharedValue(0);
+  const shakeY = useSharedValue(0);
+
+  // Fever background pulse
+  const feverHue = useSharedValue(0);
 
   const {
     gameState,
@@ -64,28 +95,98 @@ export default function GameScreen() {
     prevPhaseRef.current = gameState.phase;
   }, [gameState.phase]);
 
+  // Enhanced combo haptics + screen shake
   useEffect(() => {
-    // Combo haptic
-    if (gameState.combo.count > prevComboRef.current && gameState.combo.count >= 2) {
-      hapticCombo();
+    const comboCount = gameState.combo.count;
+    if (comboCount > prevComboRef.current && comboCount >= 2) {
+      if (comboCount >= 5) {
+        hapticComboHeavy();
+      } else {
+        hapticCombo();
+      }
+
+      // Screen shake based on combo
+      const intensity = comboCount >= 10 ? 15 : comboCount >= 5 ? 8 : 3;
+      const duration = 40;
+      shakeX.value = withSequence(
+        withTiming(intensity, { duration }),
+        withTiming(-intensity, { duration }),
+        withTiming(intensity * 0.6, { duration }),
+        withTiming(-intensity * 0.6, { duration }),
+        withTiming(0, { duration }),
+      );
+      shakeY.value = withSequence(
+        withTiming(-intensity * 0.5, { duration }),
+        withTiming(intensity * 0.5, { duration }),
+        withTiming(-intensity * 0.3, { duration }),
+        withTiming(0, { duration }),
+      );
     }
-    prevComboRef.current = gameState.combo.count;
+    prevComboRef.current = comboCount;
   }, [gameState.combo.count]);
 
+  // Fever haptic + background animation
   useEffect(() => {
-    // Fever haptic
     if (gameState.fever.isActive && !prevFeverRef.current) {
       hapticFever();
+      // Start fever hue rotation
+      feverHue.value = 0;
+      feverHue.value = withRepeat(
+        withTiming(360, { duration: 3000, easing: Easing.linear }),
+        -1, // infinite
+        false,
+      );
+    } else if (!gameState.fever.isActive && prevFeverRef.current) {
+      cancelAnimation(feverHue);
+      feverHue.value = 0;
     }
     prevFeverRef.current = gameState.fever.isActive;
   }, [gameState.fever.isActive]);
 
+  // Clear event: particles + special block haptic
   useEffect(() => {
-    if (gameState.phase === 'gameover' && !gameOverSavedRef.current) {
-      gameOverSavedRef.current = true;
-      saveGameResult();
+    const clearEvent = gameState.lastClearEvent;
+    if (clearEvent && clearEvent !== prevClearEventRef.current) {
+      prevClearEventRef.current = clearEvent;
+
+      // Special block haptic
+      if (clearEvent.hadSpecialBlock) {
+        hapticSpecialBlock();
+      }
+
+      // Spawn particles at cleared positions
+      const particleCount = clearEvent.comboCount >= 3 ? 12 : 7;
+      const newParticles: ParticleInstance[] = clearEvent.positions.map(pos => ({
+        id: particleIdCounter++,
+        row: pos.row,
+        col: pos.col,
+        count: particleCount,
+      }));
+      setParticles(prev => [...prev, ...newParticles]);
     }
-  }, [gameState.phase]);
+  }, [gameState.lastClearEvent]);
+
+  const removeParticle = useCallback((id: number) => {
+    setParticles(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: shakeX.value },
+      { translateY: shakeY.value },
+    ],
+  }));
+
+  const feverBgStyle = useAnimatedStyle(() => {
+    if (!gameState.fever.isActive) {
+      return { backgroundColor: 'transparent' };
+    }
+    // Pulsating rainbow overlay
+    const hue = feverHue.value;
+    return {
+      backgroundColor: `hsla(${hue}, 80%, 50%, 0.12)`,
+    };
+  });
 
   const handleDismissTutorial = useCallback(async () => {
     setShowTutorial(false);
@@ -110,29 +211,29 @@ export default function GameScreen() {
   }, [handleSwipeEnd, gameState.swipePath]);
 
   const generateWordleGrid = useCallback(() => {
+    const history = gameState.clearedCellHistory;
     const score = gameState.score;
-    const emojis = ['🟩', '🟨', '🟥', '🟦', '🟪', '⬜'];
 
-    // Generate a visual representation based on game stats
+    // Map the 10x6 grid to a 10x6 emoji representation
+    // Cleared cells get colored emojis, uncleared get white
+    const colorEmojis = ['🟩', '🟨', '🟥', '🟦', '🟪', '🟧'];
     const rows: string[] = [];
-    const totalCleared = score.blocksCleared;
-    const maxCombo = score.maxChain;
 
-    // Create a pattern based on score breakdown
-    // Each row represents a "phase" of the game
-    const phases = Math.min(5, Math.max(2, Math.ceil(totalCleared / 10)));
-    for (let i = 0; i < phases; i++) {
+    for (let r = 0; r < ROWS; r++) {
       let row = '';
-      for (let j = 0; j < 6; j++) {
-        // Use different emojis based on performance in each "phase"
-        const idx = (i * 6 + j + totalCleared) % emojis.length;
-        row += emojis[idx];
+      for (let c = 0; c < COLS; c++) {
+        if (history[r][c]) {
+          // Use different colors based on position for visual variety
+          row += colorEmojis[(r + c) % colorEmojis.length];
+        } else {
+          row += '\u2B1C'; // white square
+        }
       }
       rows.push(row);
     }
 
     return rows.join('\n');
-  }, [gameState.score]);
+  }, [gameState.clearedCellHistory, gameState.score]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -160,6 +261,13 @@ export default function GameScreen() {
     router.replace('/');
   }, [router]);
 
+  useEffect(() => {
+    if (gameState.phase === 'gameover' && !gameOverSavedRef.current) {
+      gameOverSavedRef.current = true;
+      saveGameResult();
+    }
+  }, [gameState.phase]);
+
   const isPlaying = gameState.phase === 'playing' || gameState.phase === 'fever';
   const isNewBest = gameState.score.current > prevBest && gameState.score.current > 0;
 
@@ -170,9 +278,9 @@ export default function GameScreen() {
         <TutorialOverlay colors={colors} onDismiss={handleDismissTutorial} />
       )}
 
-      {/* Fever overlay */}
+      {/* Fever pulsating background overlay */}
       {gameState.fever.isActive && (
-        <View style={[styles.feverOverlay, { backgroundColor: colors.feverOverlay }]} />
+        <Animated.View style={[styles.feverOverlay, feverBgStyle]} />
       )}
 
       {/* Score bar */}
@@ -187,8 +295,8 @@ export default function GameScreen() {
       {/* Next queue */}
       <NextQueue nextRows={gameState.nextRows} colors={colors} />
 
-      {/* Grid */}
-      <View style={styles.gridContainer}>
+      {/* Grid with screen shake */}
+      <Animated.View style={[styles.gridContainer, shakeStyle]}>
         <GridView
           grid={gameState.grid}
           colors={colors}
@@ -199,9 +307,22 @@ export default function GameScreen() {
           disabled={!isPlaying || gameState.isPaused || showTutorial}
         />
 
+        {/* Particles overlay */}
+        <View style={particleStyles.particleContainer}>
+          {particles.map(p => (
+            <ClearParticleEffect
+              key={p.id}
+              row={p.row}
+              col={p.col}
+              count={p.count}
+              onComplete={() => removeParticle(p.id)}
+            />
+          ))}
+        </View>
+
         {/* Combo display */}
         <ComboDisplay comboCount={gameState.combo.count} />
-      </View>
+      </Animated.View>
 
       {/* Sum display during swipe */}
       {gameState.swipePath && (
@@ -213,7 +334,7 @@ export default function GameScreen() {
             },
           ]}>
             SUM: {gameState.swipePath.currentSum}/10
-            {gameState.swipePath.isComplete ? ' ✅' : ''}
+            {gameState.swipePath.isComplete ? ' \u2705' : ''}
           </Text>
         </View>
       )}
@@ -221,7 +342,7 @@ export default function GameScreen() {
       {/* Pause button */}
       {isPlaying && (
         <TouchableOpacity style={styles.pauseButton} onPress={togglePause}>
-          <Text style={styles.pauseText}>{gameState.isPaused ? '▶' : '⏸'}</Text>
+          <Text style={styles.pauseText}>{gameState.isPaused ? '\u25B6' : '\u23F8'}</Text>
         </TouchableOpacity>
       )}
 
@@ -233,13 +354,13 @@ export default function GameScreen() {
             style={[styles.resumeButton, { backgroundColor: colors.accentColor }]}
             onPress={togglePause}
           >
-            <Text style={styles.resumeText}>▶ 再開</Text>
+            <Text style={styles.resumeText}>{'\u25B6'} 再開</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quitButton, { borderColor: colors.accentColor }]}
             onPress={handleHome}
           >
-            <Text style={[styles.quitText, { color: colors.accentColor }]}>🏠 タイトルへ</Text>
+            <Text style={[styles.quitText, { color: colors.accentColor }]}>{'\uD83C\uDFE0'} タイトルへ</Text>
           </TouchableOpacity>
         </View>
       )}

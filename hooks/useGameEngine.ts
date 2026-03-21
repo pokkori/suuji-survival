@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { GameState, GamePhase, SwipePath, Position, CellContent, Grid, DifficultyParams } from '../types';
+import { GameState, GamePhase, SwipePath, Position, CellContent, Grid, DifficultyParams, ClearEvent } from '../types';
 import { createEmptyGrid, cloneGrid, clearCells, isGridEmpty, markCellsSelected, clearTopRows } from '../engine/gridLogic';
 import { dropNewRows, applyGravity, generateNewRows, generatePreviewRows } from '../engine/dropLogic';
 import { getCellValue, isAdjacent, isInBounds } from '../engine/matchLogic';
@@ -10,8 +10,13 @@ import { calculateScore } from '../engine/scoreCalc';
 import { STORAGE_KEYS } from '../constants/storage';
 import { useStorage } from './useStorage';
 import { SeededRNG } from '../engine/rng';
+import { COLS, ROWS } from '../constants/grid';
 
 const TICK_INTERVAL_MS = 100; // 100ms tick for game loop (not 16ms to reduce CPU)
+
+function createEmptyClearedHistory(): boolean[][] {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+}
 
 function createInitialState(): GameState {
   const diff = DIFFICULTY_TABLE[0].params;
@@ -27,6 +32,8 @@ function createInitialState(): GameState {
     swipePath: null,
     isPaused: false,
     freezeRemainingMs: 0,
+    clearedCellHistory: createEmptyClearedHistory(),
+    lastClearEvent: null,
   };
 }
 
@@ -164,6 +171,8 @@ export function useGameEngine(dailySeed?: number) {
         swipePath: null,
         isPaused: false,
         freezeRemainingMs: 0,
+        clearedCellHistory: createEmptyClearedHistory(),
+        lastClearEvent: null,
       });
     });
   }, [dailySeed, storage]);
@@ -266,9 +275,11 @@ export function useGameEngine(dailySeed?: number) {
       let freezeMs = 0;
 
       // Check for special blocks
+      let hadSpecialBlock = false;
       for (const pos of path.cells) {
         const content = prev.grid[pos.row][pos.col].content;
         if (content.type === 'special') {
+          hadSpecialBlock = true;
           const result = executeSpecialBlock(prev.grid, pos, content.special);
           if (content.special === 'bomb') {
             // Add bomb cleared positions (avoid duplicates)
@@ -316,6 +327,21 @@ export function useGameEngine(dailySeed?: number) {
       // Update fever
       const fever = updateFeverGauge(prev.fever, allClearedPositions.length, combo.count > 1, 0);
 
+      // Record cleared cells in history
+      const clearedCellHistory = prev.clearedCellHistory.map(row => [...row]);
+      for (const pos of allClearedPositions) {
+        if (pos.row >= 0 && pos.row < ROWS && pos.col >= 0 && pos.col < COLS) {
+          clearedCellHistory[pos.row][pos.col] = true;
+        }
+      }
+
+      // Create clear event for effects
+      const lastClearEvent: ClearEvent = {
+        positions: allClearedPositions,
+        comboCount: combo.count,
+        hadSpecialBlock,
+      };
+
       return {
         ...prev,
         grid,
@@ -332,6 +358,8 @@ export function useGameEngine(dailySeed?: number) {
         },
         freezeRemainingMs: prev.freezeRemainingMs + freezeMs,
         phase: fever.isActive ? 'fever' as GamePhase : prev.phase,
+        clearedCellHistory,
+        lastClearEvent,
       };
     });
   }, []);
