@@ -4,20 +4,29 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGameEngine } from '../hooks/useGameEngine';
 import { useTheme } from '../hooks/useTheme';
+import { useStorage } from '../hooks/useStorage';
 import { GridView } from '../components/Grid';
 import { ScoreBar } from '../components/ScoreBar';
 import { NextQueue } from '../components/NextQueue';
 import { ComboDisplay } from '../components/ComboDisplay';
 import { GameOverOverlay } from '../components/GameOverOverlay';
+import { TutorialOverlay } from '../components/TutorialOverlay';
 import { formatNumber } from '../utils/formatNumber';
+import { hapticClear, hapticCombo, hapticFever, hapticGameOver } from '../utils/haptics';
+import { STORAGE_KEYS } from '../constants/storage';
 
 export default function GameScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ dailySeed?: string }>();
   const dailySeed = params.dailySeed ? Number(params.dailySeed) : undefined;
   const { colors } = useTheme();
+  const storage = useStorage();
   const [prevBest, setPrevBest] = useState(0);
   const gameOverSavedRef = useRef(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const prevPhaseRef = useRef<string>('idle');
+  const prevComboRef = useRef(0);
+  const prevFeverRef = useRef(false);
 
   const {
     gameState,
@@ -31,10 +40,45 @@ export default function GameScreen() {
     saveGameResult,
   } = useGameEngine(dailySeed);
 
+  // Check if tutorial should be shown
+  useEffect(() => {
+    (async () => {
+      const seen = await storage.getString(STORAGE_KEYS.TUTORIAL_SEEN, '');
+      if (!seen) {
+        setShowTutorial(true);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     setPrevBest(gameState.score.best);
     startGame();
   }, []);
+
+  // Haptics feedback for game events
+  useEffect(() => {
+    // Game over haptic
+    if (gameState.phase === 'gameover' && prevPhaseRef.current !== 'gameover') {
+      hapticGameOver();
+    }
+    prevPhaseRef.current = gameState.phase;
+  }, [gameState.phase]);
+
+  useEffect(() => {
+    // Combo haptic
+    if (gameState.combo.count > prevComboRef.current && gameState.combo.count >= 2) {
+      hapticCombo();
+    }
+    prevComboRef.current = gameState.combo.count;
+  }, [gameState.combo.count]);
+
+  useEffect(() => {
+    // Fever haptic
+    if (gameState.fever.isActive && !prevFeverRef.current) {
+      hapticFever();
+    }
+    prevFeverRef.current = gameState.fever.isActive;
+  }, [gameState.fever.isActive]);
 
   useEffect(() => {
     if (gameState.phase === 'gameover' && !gameOverSavedRef.current) {
@@ -42,6 +86,11 @@ export default function GameScreen() {
       saveGameResult();
     }
   }, [gameState.phase]);
+
+  const handleDismissTutorial = useCallback(async () => {
+    setShowTutorial(false);
+    await storage.setString(STORAGE_KEYS.TUTORIAL_SEEN, '1');
+  }, [storage]);
 
   const handleRestart = useCallback(() => {
     gameOverSavedRef.current = false;
@@ -52,15 +101,60 @@ export default function GameScreen() {
     revive();
   }, [revive]);
 
+  const handleSwipeEndWithHaptic = useCallback(() => {
+    // Check if the current swipe will clear (sum === 10 and at least 2 cells)
+    if (gameState.swipePath?.isComplete && (gameState.swipePath?.cells.length ?? 0) >= 2) {
+      hapticClear();
+    }
+    handleSwipeEnd();
+  }, [handleSwipeEnd, gameState.swipePath]);
+
+  const generateWordleGrid = useCallback(() => {
+    const score = gameState.score;
+    const emojis = ['🟩', '🟨', '🟥', '🟦', '🟪', '⬜'];
+
+    // Generate a visual representation based on game stats
+    const rows: string[] = [];
+    const totalCleared = score.blocksCleared;
+    const maxCombo = score.maxChain;
+
+    // Create a pattern based on score breakdown
+    // Each row represents a "phase" of the game
+    const phases = Math.min(5, Math.max(2, Math.ceil(totalCleared / 10)));
+    for (let i = 0; i < phases; i++) {
+      let row = '';
+      for (let j = 0; j < 6; j++) {
+        // Use different emojis based on performance in each "phase"
+        const idx = (i * 6 + j + totalCleared) % emojis.length;
+        row += emojis[idx];
+      }
+      rows.push(row);
+    }
+
+    return rows.join('\n');
+  }, [gameState.score]);
+
   const handleShare = useCallback(async () => {
     try {
-      await Share.share({
-        message: `数字サバイバルで${formatNumber(gameState.score.current)}点を記録しました！最大コンボx${gameState.score.maxChain} #数字サバイバル #NumberSurvivor`,
-      });
+      const score = gameState.score;
+      const dayNum = Math.floor(Date.now() / 86400000);
+      const grid = generateWordleGrid();
+
+      const message = [
+        `数字サバイバル Day ${dayNum % 1000}`,
+        `Score: ${formatNumber(score.current)}`,
+        `Combo: x${score.maxChain} | 消去: ${score.blocksCleared}`,
+        '',
+        grid,
+        '',
+        '#数字サバイバル #NumberSurvivor',
+      ].join('\n');
+
+      await Share.share({ message });
     } catch {
       // ignore
     }
-  }, [gameState.score]);
+  }, [gameState.score, generateWordleGrid]);
 
   const handleHome = useCallback(() => {
     router.replace('/');
@@ -71,6 +165,11 @@ export default function GameScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Tutorial overlay (first play only) */}
+      {showTutorial && (
+        <TutorialOverlay colors={colors} onDismiss={handleDismissTutorial} />
+      )}
+
       {/* Fever overlay */}
       {gameState.fever.isActive && (
         <View style={[styles.feverOverlay, { backgroundColor: colors.feverOverlay }]} />
@@ -96,8 +195,8 @@ export default function GameScreen() {
           warningRowThreshold={gameState.difficulty.warningRowThreshold}
           onSwipeStart={handleSwipeStart}
           onSwipeMove={handleSwipeMove}
-          onSwipeEnd={handleSwipeEnd}
-          disabled={!isPlaying || gameState.isPaused}
+          onSwipeEnd={handleSwipeEndWithHaptic}
+          disabled={!isPlaying || gameState.isPaused || showTutorial}
         />
 
         {/* Combo display */}

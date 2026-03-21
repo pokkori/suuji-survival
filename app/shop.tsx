@@ -103,19 +103,40 @@ export default function ShopScreen() {
           ── プレミアム ──
         </Text>
 
-        <TouchableOpacity style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}>
-          <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🚫 広告除去</Text>
-          <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥480</Text>
+        <TouchableOpacity
+          style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
+          activeOpacity={0.7}
+          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+        >
+          <View>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🚫 広告除去</Text>
+            <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
+          </View>
+          <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥480</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}>
-          <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 500コイン</Text>
-          <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥160</Text>
+        <TouchableOpacity
+          style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
+          activeOpacity={0.7}
+          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+        >
+          <View>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 500コイン</Text>
+            <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
+          </View>
+          <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥160</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}>
-          <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 1500コイン</Text>
-          <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥400</Text>
+        <TouchableOpacity
+          style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
+          activeOpacity={0.7}
+          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+        >
+          <View>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 1500コイン</Text>
+            <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
+          </View>
+          <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥400</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -154,4 +175,6 @@ const styles = StyleSheet.create({
   },
   premiumText: { fontSize: 16, fontWeight: 'bold' },
   premiumPrice: { fontSize: 16, fontWeight: 'bold' },
+  premiumDisabled: { opacity: 0.7 },
+  comingSoon: { fontSize: 11, color: '#999', marginTop: 2 },
 });

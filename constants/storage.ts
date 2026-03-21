@@ -22,4 +22,5 @@ export const STORAGE_KEYS = {
   CONTINUE_TOKENS: '@ns:continue_tokens',
   GAME_COUNT: '@ns:game_count',
   TOTAL_SCORE: '@ns:total_score',
+  TUTORIAL_SEEN: '@ns:tutorial_seen',
 } as const;

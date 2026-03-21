@@ -1,5 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withSequence,
+  FadeIn,
+  ZoomOut,
+} from 'react-native-reanimated';
 import { Cell as CellType, ThemeColors } from '../types';
 import { CELL_SIZE } from '../constants/grid';
 import { SPECIAL_BLOCK_ICONS, SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
@@ -11,10 +20,26 @@ interface Props {
 }
 
 export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger }) => {
-  const { content, isSelected } = cell;
+  const { content, isSelected, isDestroying } = cell;
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isSelected) {
+      scale.value = withSequence(
+        withTiming(0.85, { duration: 80 }),
+        withSpring(1.05, { damping: 8, stiffness: 300 }),
+      );
+    } else {
+      scale.value = withTiming(1, { duration: 100 });
+    }
+  }, [isSelected]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   if (content.type === 'empty') {
-    return <View style={[styles.cell, { backgroundColor: 'transparent' }]} />;
+    return <Animated.View style={[styles.cell, { backgroundColor: 'transparent' }]} />;
   }
 
   let bgColor: string;
@@ -29,7 +54,9 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
   }
 
   return (
-    <View
+    <Animated.View
+      entering={FadeIn.duration(200).springify()}
+      exiting={ZoomOut.duration(250)}
       style={[
         styles.cell,
         {
@@ -39,9 +66,10 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
           opacity: isDanger ? 0.7 : 1,
         },
         isDanger && styles.danger,
+        animatedStyle,
       ]}
     >
-      <Text
+      <Animated.Text
         style={[
           styles.text,
           {
@@ -51,8 +79,8 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
         ]}
       >
         {label}
-      </Text>
-    </View>
+      </Animated.Text>
+    </Animated.View>
   );
 });
 
