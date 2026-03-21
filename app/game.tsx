@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Share, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +25,7 @@ import { ClearParticleEffect, styles as particleStyles } from '../components/Cle
 import { ShockwaveEffect } from '../components/ShockwaveEffect';
 import { ChainDisplay } from '../components/ChainDisplay';
 import { formatNumber } from '../utils/formatNumber';
+import { generateScoreCard } from '../utils/shareImage';
 import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
 import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
@@ -381,11 +382,31 @@ export default function GameScreen() {
       const maxChainLevel = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : 1;
       const isNewRecord = score.current > 0 && score.current >= score.best;
       const wordleGrid = generateWordleGrid();
-      const message = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid);
-      await Share.share({ message });
-    } catch {
-      // ignore
-    }
+      const baseText = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid);
+      const message = wordleGrid ? `${baseText}` : baseText;
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
+        const blob = await generateScoreCard({
+          score: score.current,
+          maxChain: score.maxChain,
+          blocksCleared: score.blocksCleared ?? 0,
+          isNewRecord,
+          wordleGrid: wordleGrid || '',
+          themeColors: { background: '#0a0a1a', accentColor: '#00FFAA', cellColors: {} },
+        });
+        if (
+          blob &&
+          navigator.canShare &&
+          navigator.canShare({ files: [new File([blob], 'score.png', { type: 'image/png' })] })
+        ) {
+          const file = new File([blob], 'score.png', { type: 'image/png' });
+          await navigator.share({ files: [file], text: message });
+        } else {
+          await navigator.share({ text: message });
+        }
+      } else {
+        await Share.share({ message });
+      }
+    } catch { /* ignore */ }
   }, [gameState.score, gameState.maxChainLevel, generateShareText, generateWordleGrid]);
 
   const handleHome = useCallback(() => {

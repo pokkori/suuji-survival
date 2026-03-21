@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScoreState, ThemeColors } from '../types';
 import { formatNumber, formatTime } from '../utils/formatNumber';
 import { scoreToCoins } from '../engine/scoreCalc';
+import { STORAGE_KEYS } from '../constants/storage';
 
 interface Props {
   score: ScoreState;
@@ -20,6 +22,51 @@ export const GameOverOverlay: React.FC<Props> = ({
   score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest,
 }) => {
   const earnedCoins = scoreToCoins(score.current);
+  const [streakDays, setStreakDays] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // Read streak data: JSON { count: number, lastDate: string }
+        const raw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_STREAK);
+        const today = new Date().toISOString().slice(0, 10);
+        if (raw) {
+          const data = JSON.parse(raw) as { count: number; lastDate: string };
+          const last = new Date(data.lastDate);
+          const now = new Date(today);
+          const diffDays = Math.round((now.getTime() - last.getTime()) / 86400000);
+          if (diffDays === 0) {
+            // Same day: keep current streak
+            setStreakDays(data.count);
+          } else if (diffDays === 1) {
+            // Next consecutive day: increment
+            const newCount = data.count + 1;
+            await AsyncStorage.setItem(
+              STORAGE_KEYS.DAILY_STREAK,
+              JSON.stringify({ count: newCount, lastDate: today }),
+            );
+            setStreakDays(newCount);
+          } else {
+            // Streak broken: reset to 1
+            await AsyncStorage.setItem(
+              STORAGE_KEYS.DAILY_STREAK,
+              JSON.stringify({ count: 1, lastDate: today }),
+            );
+            setStreakDays(1);
+          }
+        } else {
+          // First ever play
+          await AsyncStorage.setItem(
+            STORAGE_KEYS.DAILY_STREAK,
+            JSON.stringify({ count: 1, lastDate: today }),
+          );
+          setStreakDays(1);
+        }
+      } catch {
+        // silently fail
+      }
+    })();
+  }, []);
 
   return (
     <View style={styles.overlay}>
@@ -32,6 +79,10 @@ export const GameOverOverlay: React.FC<Props> = ({
         </Text>
         {isNewBest && (
           <Text style={styles.newBest}>🏆 NEW BEST!</Text>
+        )}
+
+        {streakDays >= 2 && (
+          <Text style={styles.streakBadge}>🔥 {streakDays}日連続プレイ！</Text>
         )}
 
         <View style={styles.statsRow}>
@@ -126,6 +177,12 @@ const styles = StyleSheet.create({
   newBest: {
     fontSize: 18,
     color: '#FFD700',
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  streakBadge: {
+    fontSize: 16,
+    color: '#FF8C00',
     fontWeight: 'bold',
     marginBottom: 8,
   },

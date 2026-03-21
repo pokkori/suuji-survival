@@ -26,7 +26,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "title": "数字サバイバル - スワイプで10を作る数字パズル",
+      "description": "落ちてくる数字をスワイプして合計10に！3段カスケードで爆発スコア。フィーバーモードで高得点を狙え。",
+      "themeColor": "#1a1a3e"
     },
     "plugins": [
       "expo-router",
