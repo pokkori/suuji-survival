@@ -6,6 +6,7 @@ import Animated, {
   withSequence,
   withTiming,
   withRepeat,
+  withDelay,
   Easing,
   cancelAnimation,
 } from 'react-native-reanimated';
@@ -22,11 +23,12 @@ import { GameOverOverlay } from '../components/GameOverOverlay';
 import { TutorialOverlay } from '../components/TutorialOverlay';
 import { ClearParticleEffect, styles as particleStyles } from '../components/ClearParticle';
 import { ShockwaveEffect } from '../components/ShockwaveEffect';
+import { ChainDisplay } from '../components/ChainDisplay';
 import { formatNumber } from '../utils/formatNumber';
 import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
-import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, resumeAudioContext, setSEEnabled, setSEVolume } from '../utils/sound';
+import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
-import { ClearEvent, Position, UserSettings } from '../types';
+import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS } from '../constants/grid';
 
 // Unique ID counter for particle effects
@@ -63,6 +65,10 @@ export default function GameScreen() {
   const prevClearEventRef = useRef<ClearEvent | null>(null);
   const [particles, setParticles] = useState<ParticleInstance[]>([]);
   const [shockwaves, setShockwaves] = useState<ShockwaveInstance[]>([]);
+  const prevChainEventRef = useRef<ChainEvent | null>(null);
+
+  // Spotlight overlay for 3+ chain cascade
+  const spotlightOpacity = useSharedValue(0);
 
   // 5+ combo fullscreen flash
   const flashOpacity = useSharedValue(0);
@@ -187,6 +193,40 @@ export default function GameScreen() {
     prevFeverRef.current = gameState.fever.isActive;
   }, [gameState.fever.isActive]);
 
+  // Chain event: chain SE + spotlight effect
+  useEffect(() => {
+    const chainEvent = gameState.lastChainEvent;
+    if (chainEvent && chainEvent !== prevChainEventRef.current && chainEvent.level >= 2) {
+      prevChainEventRef.current = chainEvent;
+
+      // Play chain sound with rising pitch
+      playChainSound(chainEvent.level);
+
+      // 3+ chain: spotlight effect (darken background, cells glow)
+      if (chainEvent.level >= 3) {
+        spotlightOpacity.value = withSequence(
+          withTiming(0.5, { duration: 150 }),
+          withDelay(400, withTiming(0, { duration: 300 })),
+        );
+      }
+
+      // Screen shake for chain
+      const intensity = chainEvent.level >= 4 ? 12 : chainEvent.level >= 3 ? 8 : 4;
+      const duration = 40;
+      shakeX.value = withSequence(
+        withTiming(intensity, { duration }),
+        withTiming(-intensity, { duration }),
+        withTiming(intensity * 0.5, { duration }),
+        withTiming(0, { duration }),
+      );
+      shakeY.value = withSequence(
+        withTiming(-intensity * 0.5, { duration }),
+        withTiming(intensity * 0.5, { duration }),
+        withTiming(0, { duration }),
+      );
+    }
+  }, [gameState.lastChainEvent]);
+
   // Clear event: particles + shockwave + special block haptic + sound
   useEffect(() => {
     const clearEvent = gameState.lastClearEvent;
@@ -257,6 +297,10 @@ export default function GameScreen() {
     opacity: flashOpacity.value,
   }));
 
+  const spotlightStyle = useAnimatedStyle(() => ({
+    opacity: spotlightOpacity.value,
+  }));
+
   const handleDismissTutorial = useCallback(async () => {
     setShowTutorial(false);
     await storage.setString(STORAGE_KEYS.TUTORIAL_SEEN, '1');
@@ -290,18 +334,18 @@ export default function GameScreen() {
 
   const generateWordleGrid = useCallback(() => {
     const history = gameState.clearedCellHistory;
-    const score = gameState.score;
 
-    // Map the 10x6 grid to a 10x6 emoji representation
-    // Cleared cells get colored emojis, uncleared get white
+    // Compress 10 rows -> 5 rows (2 rows merged into 1)
+    // If either row in a pair has a cleared cell at that column, it's colored
     const colorEmojis = ['🟩', '🟨', '🟥', '🟦', '🟪', '🟧'];
     const rows: string[] = [];
 
-    for (let r = 0; r < ROWS; r++) {
+    for (let r = 0; r < ROWS; r += 2) {
       let row = '';
       for (let c = 0; c < COLS; c++) {
-        if (history[r][c]) {
-          // Use different colors based on position for visual variety
+        const cleared1 = history[r]?.[c] ?? false;
+        const cleared2 = history[r + 1]?.[c] ?? false;
+        if (cleared1 || cleared2) {
           row += colorEmojis[(r + c) % colorEmojis.length];
         } else {
           row += '\u2B1C'; // white square
@@ -311,7 +355,7 @@ export default function GameScreen() {
     }
 
     return rows.join('\n');
-  }, [gameState.clearedCellHistory, gameState.score]);
+  }, [gameState.clearedCellHistory]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -319,14 +363,12 @@ export default function GameScreen() {
       const dayNum = Math.floor(Date.now() / 86400000);
       const grid = generateWordleGrid();
 
+      const maxChain = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : score.maxChain;
       const message = [
-        `数字サバイバル Day ${dayNum % 1000}`,
-        `Score: ${formatNumber(score.current)}`,
-        `Combo: x${score.maxChain} | 消去: ${score.blocksCleared}`,
-        '',
+        `数字サバイバル #${dayNum % 1000}`,
+        `\uD83D\uDD25 ${formatNumber(score.current)}pts | 最大${maxChain}連鎖`,
         grid,
-        '',
-        '#数字サバイバル #NumberSurvivor',
+        '#数字サバイバル',
       ].join('\n');
 
       await Share.share({ message });
@@ -346,7 +388,7 @@ export default function GameScreen() {
     }
   }, [gameState.phase]);
 
-  const isPlaying = gameState.phase === 'playing' || gameState.phase === 'fever';
+  const isPlaying = gameState.phase === 'playing' || gameState.phase === 'fever' || gameState.phase === 'cascading';
   const isNewBest = gameState.score.current > prevBest && gameState.score.current > 0;
 
   return (
@@ -363,6 +405,9 @@ export default function GameScreen() {
 
       {/* 5+ combo fullscreen white flash */}
       <Animated.View style={[styles.flashOverlay, flashStyle]} pointerEvents="none" />
+
+      {/* Spotlight overlay for 3+ chain cascade */}
+      <Animated.View style={[styles.spotlightOverlay, spotlightStyle]} pointerEvents="none" />
 
       {/* Score bar */}
       <ScoreBar
@@ -385,7 +430,7 @@ export default function GameScreen() {
           onSwipeStart={handleSwipeStartWithAudio}
           onSwipeMove={handleSwipeMove}
           onSwipeEnd={handleSwipeEndWithHaptic}
-          disabled={!isPlaying || gameState.isPaused || showTutorial}
+          disabled={!isPlaying || gameState.isPaused || showTutorial || gameState.phase === 'cascading'}
         />
 
         {/* Particles overlay */}
@@ -416,6 +461,9 @@ export default function GameScreen() {
 
         {/* Combo display */}
         <ComboDisplay comboCount={gameState.combo.count} />
+
+        {/* Chain display */}
+        <ChainDisplay chainEvent={gameState.lastChainEvent} />
       </Animated.View>
 
       {/* Sum display during swipe */}
@@ -496,6 +544,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#FFFFFF',
     zIndex: 200,
+    pointerEvents: 'none',
+  },
+  spotlightOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    zIndex: 50,
     pointerEvents: 'none',
   },
   shockwaveContainer: {

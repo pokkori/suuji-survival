@@ -91,6 +91,10 @@ function pickSpecialType(rand: () => number): SpecialBlockType {
   return 'wild';
 }
 
+// Complement pairs: two numbers that sum to 10
+const COMPLEMENT_PAIRS: [NumberValue, NumberValue][] = [[1,9],[2,8],[3,7],[4,6],[5,5]];
+const COMPLEMENT_PAIR_CHANCE = 0.25; // 25% chance to insert a complement pair
+
 export function generateNewRows(
   rowCount: number,
   distribution: Record<NumberValue, number>,
@@ -109,6 +113,19 @@ export function generateNewRows(
         row.push({ type: 'number', value: pickNumber(distribution, rand) });
       }
     }
+
+    // Insert complement pairs: 25% chance per row, pick a random adjacent pair of columns
+    if (rand() < COMPLEMENT_PAIR_CHANCE && COLS >= 2) {
+      const startCol = Math.floor(rand() * (COLS - 1));
+      // Only replace if both cells are number type (not special)
+      if (row[startCol].type !== 'special' && row[startCol + 1].type !== 'special') {
+        const pairIndex = Math.floor(rand() * COMPLEMENT_PAIRS.length);
+        const [a, b] = COMPLEMENT_PAIRS[pairIndex];
+        row[startCol] = { type: 'number', value: a };
+        row[startCol + 1] = { type: 'number', value: b };
+      }
+    }
+
     rows.push(row);
   }
   return rows;

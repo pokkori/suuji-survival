@@ -139,6 +139,18 @@ export interface GameState {
   clearedCellHistory: boolean[][];
   /** Latest clear event for particle/shake effects */
   lastClearEvent: ClearEvent | null;
+  /** Current cascade chain level (1=manual, 2+=auto chain) */
+  chainLevel: number;
+  /** Max chain level achieved in current cascade */
+  maxChainLevel: number;
+  /** Chain score popup event: { level, score } */
+  lastChainEvent: ChainEvent | null;
+}
+
+export interface ChainEvent {
+  level: number;
+  score: number;
+  totalScore: number;
 }
 
 // ============================================

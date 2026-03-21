@@ -127,3 +127,25 @@ export function playGameOverSound() {
 export function playSpecialBlockSound() {
   playTone(1000, 80, 'square', 0.5, 600);
 }
+
+/** Chain sound: pitch rises with chain level. C4→E4→G4→C5, 5+ = arpeggio fanfare */
+export function playChainSound(chainLevel: number) {
+  if (!seEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+
+  if (chainLevel >= 5) {
+    // Fanfare arpeggio: C-E-G-C
+    playNote(523, now, 0.1, 'triangle');       // C4
+    playNote(659, now + 0.08, 0.1, 'triangle'); // E4
+    playNote(784, now + 0.16, 0.1, 'triangle'); // G4
+    playNote(1047, now + 0.24, 0.2, 'triangle'); // C5
+  } else {
+    // Single note with pitch based on chain level
+    const pitches = [523, 523, 659, 784, 1047]; // 1=C4, 2=E4, 3=G4, 4=C5
+    const freq = pitches[Math.min(chainLevel, 4)] || 523;
+    playNote(freq, now, 0.15, 'triangle');
+  }
+}

@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { GameState, GamePhase, SwipePath, Position, CellContent, Grid, DifficultyParams, ClearEvent } from '../types';
+import { GameState, GamePhase, SwipePath, Position, CellContent, Grid, DifficultyParams, ClearEvent, ChainEvent } from '../types';
 import { createEmptyGrid, cloneGrid, clearCells, isGridEmpty, markCellsSelected, clearTopRows } from '../engine/gridLogic';
 import { dropNewRows, applyGravity, generateNewRows, generatePreviewRows } from '../engine/dropLogic';
 import { getCellValue, isAdjacent, isInBounds } from '../engine/matchLogic';
 import { updateCombo, updateFeverGauge, initialComboState, initialFeverState, getComboMultiplier } from '../engine/comboLogic';
 import { getDifficulty, DIFFICULTY_TABLE } from '../engine/difficultyTable';
 import { executeSpecialBlock } from '../engine/specialBlocks';
-import { calculateScore } from '../engine/scoreCalc';
+import { calculateScore, calculateChainScore } from '../engine/scoreCalc';
+import { findAutoMatches } from '../engine/cascadeLogic';
 import { STORAGE_KEYS } from '../constants/storage';
 import { useStorage } from './useStorage';
 import { SeededRNG } from '../engine/rng';
@@ -34,6 +35,9 @@ function createInitialState(): GameState {
     freezeRemainingMs: 0,
     clearedCellHistory: createEmptyClearedHistory(),
     lastClearEvent: null,
+    chainLevel: 0,
+    maxChainLevel: 0,
+    lastChainEvent: null,
   };
 }
 
@@ -55,8 +59,9 @@ export function useGameEngine(dailySeed?: number) {
 
   // Game loop
   useEffect(() => {
-    if (gameState.phase !== 'playing' && gameState.phase !== 'fever') return;
+    if (gameState.phase !== 'playing' && gameState.phase !== 'fever' && gameState.phase !== 'cascading') return;
     if (gameState.isPaused) return;
+    if (gameState.phase === 'cascading') return; // Don't drop new rows during cascade
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -173,6 +178,9 @@ export function useGameEngine(dailySeed?: number) {
         freezeRemainingMs: 0,
         clearedCellHistory: createEmptyClearedHistory(),
         lastClearEvent: null,
+        chainLevel: 0,
+        maxChainLevel: 0,
+        lastChainEvent: null,
       });
     });
   }, [dailySeed, storage]);
@@ -189,6 +197,7 @@ export function useGameEngine(dailySeed?: number) {
   const handleSwipeStart = useCallback((pos: Position) => {
     setGameState(prev => {
       if (prev.phase !== 'playing' && prev.phase !== 'fever') return prev;
+      if (prev.phase === 'cascading' as GamePhase) return prev;
       const cell = prev.grid[pos.row]?.[pos.col];
       if (!cell || cell.content.type === 'empty') return prev;
 
@@ -257,9 +266,133 @@ export function useGameEngine(dailySeed?: number) {
     });
   }, []);
 
+  const runCascade = useCallback((grid: Grid, chainLevel: number, accumulatedScore: number, accumulatedCleared: number) => {
+    const autoMatches = findAutoMatches(grid);
+    if (autoMatches.length === 0) {
+      // Cascade finished - restore to playing phase
+      setGameState(prev => {
+        if (prev.phase !== 'cascading') return prev;
+        const restorePhase: GamePhase = prev.fever.isActive ? 'fever' : 'playing';
+        return {
+          ...prev,
+          phase: restorePhase,
+          chainLevel: 0,
+        };
+      });
+      return;
+    }
+
+    // 300ms delay for visual cascade effect (500ms for 3+ chains = slow-motion)
+    const delay = chainLevel >= 3 ? 500 : 300;
+
+    setTimeout(() => {
+      setGameState(prev => {
+        if (prev.phase !== 'cascading') return prev;
+
+        // Collect all auto-matched positions
+        const autoClearedPositions: Position[] = [];
+        for (const match of autoMatches) {
+          for (const pos of match.positions) {
+            if (!autoClearedPositions.some(p => p.row === pos.row && p.col === pos.col)) {
+              autoClearedPositions.push(pos);
+            }
+          }
+        }
+
+        // Calculate chain score for this cascade level
+        const baseScore = autoClearedPositions.length * 10;
+        const chainScore = calculateChainScore(chainLevel, baseScore);
+        const newAccumulatedScore = accumulatedScore + chainScore;
+        const newAccumulatedCleared = accumulatedCleared + autoClearedPositions.length;
+
+        // Clear the auto-matched cells
+        let newGrid = clearCells(prev.grid, autoClearedPositions);
+        newGrid = applyGravity(newGrid);
+
+        // Record cleared cells in history
+        const clearedCellHistory = prev.clearedCellHistory.map(row => [...row]);
+        for (const pos of autoClearedPositions) {
+          if (pos.row >= 0 && pos.row < ROWS && pos.col >= 0 && pos.col < COLS) {
+            clearedCellHistory[pos.row][pos.col] = true;
+          }
+        }
+
+        // Create clear event for particle/shake effects
+        const lastClearEvent: ClearEvent = {
+          positions: autoClearedPositions,
+          comboCount: prev.combo.count,
+          hadSpecialBlock: false,
+        };
+
+        // Chain event for popup display
+        const lastChainEvent: ChainEvent = {
+          level: chainLevel,
+          score: chainScore,
+          totalScore: newAccumulatedScore,
+        };
+
+        const newScore = prev.score.current + chainScore;
+        const newBest = Math.max(prev.score.best, newScore);
+        const maxChainLevel = Math.max(prev.maxChainLevel, chainLevel);
+
+        return {
+          ...prev,
+          grid: newGrid,
+          score: {
+            ...prev.score,
+            current: newScore,
+            best: newBest,
+            blocksCleared: prev.score.blocksCleared + autoClearedPositions.length,
+            maxChain: Math.max(prev.score.maxChain, chainLevel),
+          },
+          clearedCellHistory,
+          lastClearEvent,
+          lastChainEvent,
+          chainLevel,
+          maxChainLevel,
+        };
+      });
+
+      // Check for more cascades after this one
+      // Need to read grid after state update - use a short delay
+      setTimeout(() => {
+        setGameState(prev => {
+          if (prev.phase !== 'cascading') return prev;
+          // Schedule next cascade check
+          const nextMatches = findAutoMatches(prev.grid);
+          if (nextMatches.length === 0) {
+            // Cascade finished
+            const restorePhase: GamePhase = prev.fever.isActive ? 'fever' : 'playing';
+            return {
+              ...prev,
+              phase: restorePhase,
+              chainLevel: 0,
+            };
+          }
+          // Continue cascade - trigger next level
+          return prev;
+        });
+        // Read current state to decide if we continue
+        setGameState(prev => {
+          if (prev.phase === 'cascading') {
+            const nextMatches = findAutoMatches(prev.grid);
+            if (nextMatches.length > 0) {
+              // Schedule next cascade (can't recurse in setState, use timeout)
+              setTimeout(() => {
+                runCascade(prev.grid, chainLevel + 1, accumulatedScore + 0, accumulatedCleared + 0);
+              }, 0);
+            }
+          }
+          return prev;
+        });
+      }, 50);
+    }, delay);
+  }, []);
+
   const handleSwipeEnd = useCallback(() => {
     setGameState(prev => {
       if (!prev.swipePath) return prev;
+      if (prev.phase === 'cascading' as GamePhase) return prev;
 
       const path = prev.swipePath;
       if (!path.isComplete || path.cells.length < 2) {
@@ -282,7 +415,6 @@ export function useGameEngine(dailySeed?: number) {
           hadSpecialBlock = true;
           const result = executeSpecialBlock(prev.grid, pos, content.special);
           if (content.special === 'bomb') {
-            // Add bomb cleared positions (avoid duplicates)
             for (const cp of result.clearedPositions) {
               if (!allClearedPositions.some(p => p.row === cp.row && p.col === cp.col)) {
                 allClearedPositions.push(cp);
@@ -309,9 +441,9 @@ export function useGameEngine(dailySeed?: number) {
       // Check for all clear
       const allClear = isGridEmpty(grid);
 
-      // Calculate score
+      // Calculate score (chain level 1 = manual clear)
       const cellValues = path.cells.map(p => getCellValue(prev.grid, p));
-      const points = calculateScore({
+      const basePoints = calculateScore({
         cellValues,
         comboMultiplier: combo.multiplier,
         isFeverActive: prev.fever.isActive,
@@ -319,6 +451,7 @@ export function useGameEngine(dailySeed?: number) {
         bombBonusPoints: bombBonus,
         isAllClear: allClear,
       });
+      const points = calculateChainScore(1, basePoints);
 
       const newScore = prev.score.current + points;
       const newBest = Math.max(prev.score.best, newScore);
@@ -342,6 +475,15 @@ export function useGameEngine(dailySeed?: number) {
         hadSpecialBlock,
       };
 
+      // Check for auto matches after gravity (cascade check)
+      const autoMatches = findAutoMatches(grid);
+      const willCascade = autoMatches.length > 0;
+
+      // Set phase to cascading if auto matches found
+      const newPhase: GamePhase = willCascade
+        ? 'cascading'
+        : (fever.isActive ? 'fever' : prev.phase);
+
       return {
         ...prev,
         grid,
@@ -357,12 +499,33 @@ export function useGameEngine(dailySeed?: number) {
           perfectClears: allClear ? prev.score.perfectClears + 1 : prev.score.perfectClears,
         },
         freezeRemainingMs: prev.freezeRemainingMs + freezeMs,
-        phase: fever.isActive ? 'fever' as GamePhase : prev.phase,
+        phase: newPhase,
         clearedCellHistory,
         lastClearEvent,
+        chainLevel: willCascade ? 1 : 0,
+        maxChainLevel: 1,
+        lastChainEvent: null,
       };
     });
   }, []);
+
+  // Cascade loop effect - runs when phase becomes 'cascading'
+  useEffect(() => {
+    if (gameState.phase !== 'cascading') return;
+
+    const autoMatches = findAutoMatches(gameState.grid);
+    if (autoMatches.length > 0) {
+      const nextChainLevel = gameState.chainLevel + 1;
+      runCascade(gameState.grid, nextChainLevel, 0, 0);
+    } else {
+      // No more matches, end cascade
+      setGameState(prev => ({
+        ...prev,
+        phase: prev.fever.isActive ? 'fever' as GamePhase : 'playing' as GamePhase,
+        chainLevel: 0,
+      }));
+    }
+  }, [gameState.phase === 'cascading' && gameState.chainLevel]);
 
   const revive = useCallback(() => {
     if (revivalUsedRef.current) return false;
