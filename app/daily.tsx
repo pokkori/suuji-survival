@@ -76,14 +76,35 @@ export default function DailyScreen() {
 
   const progress = challenge ? Math.min(100, (challenge.bestScore / challenge.targetScore) * 100) : 0;
 
-  // Generate past 7 days display
-  const past7Days = Array.from({ length: 7 }, (_, i) => {
+  // 過去30日分のチャレンジ一覧
+  const allChallenges = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    return { date: d, key: getDateKey(d) };
+    d.setDate(d.getDate() - (29 - i));
+    return d.toISOString().split("T")[0];
   });
 
-  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  const [calendarStatuses, setCalendarStatuses] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      const statuses: Record<string, string> = {};
+      const todayStr = new Date().toISOString().split("T")[0];
+      const challenges = await storage.getItem<Record<string, DailyChallenge>>(STORAGE_KEYS.DAILY_CHALLENGES, {});
+      for (const dateStr of allChallenges.slice(-14)) {
+        if (dateStr === todayStr) {
+          statuses[dateStr] = "today";
+        } else {
+          const result = challenges[dateStr];
+          if (!result) {
+            statuses[dateStr] = "missed";
+          } else {
+            statuses[dateStr] = result.completed ? "cleared" : "failed";
+          }
+        }
+      }
+      setCalendarStatuses(statuses);
+    })();
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -163,19 +184,16 @@ export default function DailyScreen() {
         </Text>
 
         <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
-          ── 過去7日間 ──
+          ── 過去14日間 ──
         </Text>
         <View style={styles.weekRow}>
-          {past7Days.map(({ date, key }) => (
-            <View key={key} style={styles.dayCol}>
-              <Text style={[styles.dayName, { color: colors.cellTextColor }]}>
-                {dayNames[date.getDay()]}
-              </Text>
-              <Text style={styles.dayStatus}>
-                {key === today ? '📍' : '−'}
-              </Text>
-            </View>
-          ))}
+          {allChallenges.slice(-14).map(dateStr => {
+            const status = calendarStatuses[dateStr];
+            const emoji = status === "today" ? "📍" : status === "cleared" ? "✅" : status === "failed" ? "🔴" : "⬜";
+            return (
+              <Text key={dateStr} style={styles.dayStatus}>{emoji}</Text>
+            );
+          })}
         </View>
       </View>
     </SafeAreaView>

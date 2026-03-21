@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Share, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, Share, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -71,6 +71,9 @@ export default function GameScreen() {
   const [particles, setParticles] = useState<ParticleInstance[]>([]);
   const [shockwaves, setShockwaves] = useState<ShockwaveInstance[]>([]);
   const prevChainEventRef = useRef<ChainEvent | null>(null);
+
+  const [showMidShareHint, setShowMidShareHint] = useState(false);
+  const hasShownMidHint = useRef(false);
 
   // Spotlight overlay for 3+ chain cascade
   const spotlightOpacity = useSharedValue(0);
@@ -231,6 +234,15 @@ export default function GameScreen() {
       );
     }
   }, [gameState.lastChainEvent]);
+
+  // Mid-game share hint for maxChainLevel >= 3
+  useEffect(() => {
+    if (gameState.maxChainLevel >= 3 && !hasShownMidHint.current) {
+      hasShownMidHint.current = true;
+      setShowMidShareHint(true);
+      setTimeout(() => setShowMidShareHint(false), 3000);
+    }
+  }, [gameState.maxChainLevel]);
 
   // Clear event: particles + shockwave + special block haptic + sound
   useEffect(() => {
@@ -400,6 +412,7 @@ export default function GameScreen() {
           wordleGrid: wordleGrid || '',
           themeColors: { background: '#0a0a1a', accentColor: '#00FFAA', cellColors: {} },
           dailyStreak,
+          personalBest: prevBest,
         });
         if (
           blob &&
@@ -545,6 +558,22 @@ export default function GameScreen() {
             <Text style={[styles.quitText, { color: colors.accentColor }]}>{'\uD83C\uDFE0'} タイトルへ</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* Mid-game share hint */}
+      {showMidShareHint && (
+        <Pressable
+          style={{
+            position: "absolute", bottom: 80, alignSelf: "center",
+            backgroundColor: "#FF6B35", borderRadius: 20,
+            paddingHorizontal: 20, paddingVertical: 10, zIndex: 100
+          }}
+          onPress={() => { handleShare(); setShowMidShareHint(false); }}
+        >
+          <Text style={{ color: "#FFF", fontWeight: "bold" }}>
+            🔥 チェーン×{gameState.maxChainLevel}！シェアする？
+          </Text>
+        </Pressable>
       )}
 
       {/* Game over */}

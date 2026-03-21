@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
@@ -8,25 +9,64 @@ import { STORAGE_KEYS } from '../constants/storage';
 import { formatNumber } from '../utils/formatNumber';
 import { ThemeId } from '../types';
 
+const STORAGE_KEY_UNLOCKED = "@ns:unlocked_themes";
+const STORAGE_KEY_ACTIVE = "@ns:active_theme";
+
 export default function ShopScreen() {
   const router = useRouter();
-  const { colors, themes, unlockedThemes, purchaseTheme, selectTheme, currentThemeId } = useTheme();
+  const { colors, themes, unlockedThemes: hookUnlockedThemes, purchaseTheme, selectTheme, currentThemeId } = useTheme();
   const storage = useStorage();
   const [coins, setCoins] = useState(0);
+  const [unlockedThemes, setUnlockedThemes] = useState<ThemeId[]>(['default']);
+  const [activeTheme, setActiveTheme] = useState<ThemeId>('default');
 
   useEffect(() => {
     (async () => {
       const c = await storage.getNumber(STORAGE_KEYS.COINS, 0);
       setCoins(c);
+      const unlockedRaw = await AsyncStorage.getItem(STORAGE_KEY_UNLOCKED);
+      if (unlockedRaw) {
+        setUnlockedThemes(JSON.parse(unlockedRaw) as ThemeId[]);
+      } else {
+        setUnlockedThemes(hookUnlockedThemes as ThemeId[]);
+      }
+      const activeRaw = await AsyncStorage.getItem(STORAGE_KEY_ACTIVE);
+      if (activeRaw) {
+        setActiveTheme(activeRaw as ThemeId);
+      } else {
+        setActiveTheme(currentThemeId);
+      }
     })();
   }, []);
+
+  const handlePurchase = useCallback(async (themeId: ThemeId, cost: number) => {
+    if (coins < cost) {
+      Alert.alert("コイン不足", `あと${cost - coins}コイン必要です`);
+      return;
+    }
+    const newCoins = coins - cost;
+    await AsyncStorage.setItem("@ns:coins", String(newCoins));
+    setCoins(newCoins);
+    const unlocked = [...unlockedThemes, themeId];
+    await AsyncStorage.setItem(STORAGE_KEY_UNLOCKED, JSON.stringify(unlocked));
+    setUnlockedThemes(unlocked);
+    await AsyncStorage.setItem(STORAGE_KEY_ACTIVE, themeId);
+    setActiveTheme(themeId);
+    await selectTheme(themeId);
+  }, [coins, unlockedThemes, selectTheme]);
+
+  const handleActivate = useCallback(async (themeId: ThemeId) => {
+    await AsyncStorage.setItem(STORAGE_KEY_ACTIVE, themeId);
+    setActiveTheme(themeId);
+    await selectTheme(themeId);
+  }, [selectTheme]);
 
   const handlePurchaseTheme = useCallback(async (id: ThemeId) => {
     const theme = themes.find(t => t.id === id);
     if (!theme) return;
 
     if (unlockedThemes.includes(id)) {
-      await selectTheme(id);
+      await handleActivate(id);
       Alert.alert('テーマ変更', `${theme.name}に変更しました`);
       return;
     }
@@ -44,17 +84,13 @@ export default function ShopScreen() {
         {
           text: '購入',
           onPress: async () => {
-            const success = await purchaseTheme(id);
-            if (success) {
-              setCoins(prev => prev - theme.price);
-              await selectTheme(id);
-              Alert.alert('購入完了', `${theme.name}を購入しました！`);
-            }
+            await handlePurchase(id, theme.price);
+            Alert.alert('購入完了', `${theme.name}を購入しました！`);
           },
         },
       ]
     );
-  }, [coins, themes, unlockedThemes, purchaseTheme, selectTheme]);
+  }, [coins, themes, unlockedThemes, handlePurchase, handleActivate]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -72,15 +108,14 @@ export default function ShopScreen() {
         <View style={styles.themesGrid}>
           {themes.map(theme => {
             const isUnlocked = unlockedThemes.includes(theme.id);
-            const isCurrent = currentThemeId === theme.id;
+            const isCurrent = activeTheme === theme.id;
             return (
-              <TouchableOpacity
+              <View
                 key={theme.id}
                 style={[
                   styles.themeCard,
                   { backgroundColor: theme.colors.gridBackground, borderColor: isCurrent ? colors.accentColor : 'transparent' },
                 ]}
-                onPress={() => handlePurchaseTheme(theme.id)}
               >
                 <View style={styles.themePreview}>
                   {[1, 3, 5, 7].map(n => (
@@ -91,10 +126,24 @@ export default function ShopScreen() {
                   ))}
                 </View>
                 <Text style={[styles.themeName, { color: theme.colors.cellTextColor }]}>{theme.name}</Text>
-                <Text style={[styles.themePrice, { color: theme.colors.cellTextColor }]}>
-                  {isCurrent ? '✅ 使用中' : isUnlocked ? '選択' : `${theme.price}💰`}
-                </Text>
-              </TouchableOpacity>
+                {isCurrent ? (
+                  <Text style={[styles.themePrice, { color: '#00FF88' }]}>✅ 使用中</Text>
+                ) : isUnlocked ? (
+                  <TouchableOpacity
+                    style={styles.themeActionBtn}
+                    onPress={() => handleActivate(theme.id)}
+                  >
+                    <Text style={styles.themeActionBtnText}>適用</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.themeActionBtn, { backgroundColor: '#FFD700' }]}
+                    onPress={() => handlePurchaseTheme(theme.id)}
+                  >
+                    <Text style={[styles.themeActionBtnText, { color: '#000' }]}>{theme.price}💰 購入</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             );
           })}
         </View>
@@ -169,6 +218,11 @@ const styles = StyleSheet.create({
   },
   themeName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
   themePrice: { fontSize: 12, opacity: 0.8 },
+  themeActionBtn: {
+    backgroundColor: '#00FFAA', borderRadius: 6, paddingVertical: 4,
+    paddingHorizontal: 8, marginTop: 4,
+  },
+  themeActionBtnText: { fontSize: 12, fontWeight: 'bold', color: '#000' },
   premiumCard: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 16, borderRadius: 12, marginBottom: 8,

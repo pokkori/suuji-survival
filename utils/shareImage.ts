@@ -1,7 +1,7 @@
 // Canvas OGP score card generator for web platform
 // Generates a 1200x630 PNG blob with score, Wordle grid, and hashtags
 
-interface ShareImageParams {
+export interface ShareImageParams {
   score: number;
   maxChain: number;
   blocksCleared: number;
@@ -12,7 +12,8 @@ interface ShareImageParams {
     accentColor: string;
     cellColors: Record<string, string>;
   };
-  dailyStreak?: number;  // ← 追加
+  dailyStreak?: number;
+  personalBest?: number;  // 追加
 }
 
 export async function generateScoreCard(params: ShareImageParams): Promise<Blob | null> {
@@ -88,6 +89,19 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
     ctx.textAlign = 'center';
     ctx.fillText(`🔥 ${params.dailyStreak}日連続達成!`, W / 2, H - 74);
   }
+  if (params.personalBest !== undefined && params.score > 0) {
+    const diff = params.score - params.personalBest;
+    const pbText = diff > 0
+      ? `⬆️ 自己ベスト+${diff}点！`
+      : diff === 0
+      ? `🎯 自己ベスト更新！`
+      : `自己ベストまであと${Math.abs(diff)}点`;
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillStyle = diff >= 0 ? "#00FF88" : "#FFFFFF88";
+    ctx.textAlign = "center";
+    ctx.fillText(pbText, W / 2, 420);
+  }
+
   // Hashtags at bottom
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.font = '26px sans-serif';

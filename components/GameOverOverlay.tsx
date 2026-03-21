@@ -127,12 +127,6 @@ export const GameOverOverlay: React.FC<Props> = ({
           </Text>
         </TouchableOpacity>
 
-        {dailyStreak !== undefined && dailyStreak >= 2 && (
-          <Text style={{ color: '#FF8C00', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
-            {`\uD83D\uDD25 ${dailyStreak}\u65E5\u9023\u7D9A\u30D7\u30EC\u30A4\u4E2D\uFF01`}
-          </Text>
-        )}
-
         <TouchableOpacity
           style={[styles.buttonOutline, { borderColor: colors.accentColor }]}
           onPress={onHome}
