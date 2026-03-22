@@ -121,6 +121,16 @@ export const GameOverOverlay: React.FC<Props> = ({
         {isNewBest && (
           <Text style={styles.newBest}>NEW BEST!</Text>
         )}
+
+        {/* ▶ もう1回 — スコア直下のファーストCTA（スクロール不要） */}
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.accentColor, minHeight: 44, marginBottom: 4 }]}
+          onPress={onRestart}
+          accessibilityLabel="もう一度プレイする"
+          accessibilityRole="button"
+        >
+          <Text style={styles.buttonText}>▶ もう1回</Text>
+        </TouchableOpacity>
         {!isNewBest && personalBest > 0 && (
           <View style={styles.bestCompareRow}>
             <Text style={[styles.bestCompareLabel, { color: colors.cellTextColor }]}>
@@ -237,15 +247,6 @@ export const GameOverOverlay: React.FC<Props> = ({
         <Text style={[styles.coinsEarned, { color: '#FFD700' }]}>
           +{earnedCoins} COIN
         </Text>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.accentColor, minHeight: 44 }]}
-          onPress={onRestart}
-          accessibilityLabel="もう一度プレイする"
-          accessibilityRole="button"
-        >
-          <Text style={styles.buttonText}>▶ もう1回</Text>
-        </TouchableOpacity>
 
         {canRevive && (
           <TouchableOpacity
