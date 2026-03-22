@@ -106,7 +106,12 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
   ctx.font = '26px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('#数字サバイバル #数字ゲーム #NumberSurvivor', W / 2, H - 30);
+  ctx.fillText('#数字サバイバル #数字ゲーム #NumberSurvivor', W / 2, H - 48);
+
+  // URL
+  ctx.fillStyle = 'rgba(0,255,170,0.8)';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillText('suuji-survival.vercel.app', W / 2, H - 18);
 
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png');

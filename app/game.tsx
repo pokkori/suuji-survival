@@ -389,6 +389,7 @@ export default function GameScreen() {
       '',
       wordleGrid,
       '#数字サバイバル #NumberSurvivor',
+      'https://suuji-survival.vercel.app',
     ].join('\n');
   }, []);
 
@@ -403,7 +404,7 @@ export default function GameScreen() {
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
         const dailyStreak = await storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0);
         const streakSuffix = dailyStreak >= 2 ? ` ${dailyStreak}日連続🔥` : '';
-        const enhancedMessage = `数字サバイバル スコア: ${score.current.toLocaleString()}${streakSuffix}\n最大チェーン: ${score.maxChain} #数字サバイバル #数字ゲーム`;
+        const enhancedMessage = `数字サバイバル スコア: ${score.current.toLocaleString()}${streakSuffix}\n最大チェーン: ${score.maxChain} #数字サバイバル #数字ゲーム\nhttps://suuji-survival.vercel.app`;
         const blob = await generateScoreCard({
           score: score.current,
           maxChain: score.maxChain,

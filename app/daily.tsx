@@ -57,7 +57,7 @@ export default function DailyScreen() {
       themeColors: { background: colors.background, accentColor: colors.accentColor, cellColors: {} },
       dailyStreak: streak,
     });
-    const text = `数字サバイバル デイリー達成🏆 スコア: ${(challenge.bestScore ?? 0).toLocaleString()} ${streak}日連続🔥 #数字サバイバル`;
+    const text = `数字サバイバル デイリー達成🏆 スコア: ${(challenge.bestScore ?? 0).toLocaleString()} ${streak}日連続🔥 #数字サバイバル\nhttps://suuji-survival.vercel.app`;
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share && blob) {
       const file = new File([blob], 'number-survivor-daily.png', { type: 'image/png' });
       await navigator.share({ text, files: [file] });

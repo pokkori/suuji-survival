@@ -116,14 +116,14 @@ export const GameOverOverlay: React.FC<Props> = ({
 
         <TouchableOpacity
           style={[styles.button, {
-            backgroundColor: streakDays >= 2 ? '#FF6B35' : '#666',
+            backgroundColor: streakDays >= 2 ? '#FF6B35' : '#4A90E2',
           }]}
           onPress={onShare}
         >
           <Text style={styles.buttonText}>
             {streakDays >= 2
               ? `📤 ${streakDays}日連続をシェア！`
-              : '📤 シェア'}
+              : '📤 結果をシェア（友達を招待）'}
           </Text>
         </TouchableOpacity>
 

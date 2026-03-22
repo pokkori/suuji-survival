@@ -165,27 +165,27 @@ export default function ShopScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
+          style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+          onPress={() => Alert.alert('コイン購入', '500コインを¥160で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
         >
           <View>
             <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 500コイン</Text>
-            <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
+            <Text style={styles.comingSoon}>もうすぐ購入可能</Text>
           </View>
-          <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥160</Text>
+          <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥160</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
+          style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+          onPress={() => Alert.alert('コイン購入', '1500コインを¥400で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
         >
           <View>
             <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 1500コイン</Text>
-            <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
+            <Text style={styles.comingSoon}>もうすぐ購入可能</Text>
           </View>
-          <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥400</Text>
+          <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥400</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
