@@ -174,6 +174,12 @@ export async function stopBGM(): Promise<void> {
   try { if (_bgmFever) await _bgmFever.stopAsync(); } catch (e) {}
 }
 
+export async function unloadBGMAsync(): Promise<void> {
+  await stopBGM();
+  try { if (_bgmNormal) { await _bgmNormal.unloadAsync(); _bgmNormal = null; } } catch (e) {}
+  try { if (_bgmFever) { await _bgmFever.unloadAsync(); _bgmFever = null; } } catch (e) {}
+}
+
 export function setBGMEnabled(enabled: boolean): void {
   bgmEnabled = enabled;
   if (!enabled) { stopBGM(); }

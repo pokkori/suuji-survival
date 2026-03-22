@@ -27,7 +27,7 @@ import { ChainDisplay } from '../components/ChainDisplay';
 import { formatNumber } from '../utils/formatNumber';
 import { generateScoreCard } from '../utils/shareImage';
 import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
-import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, setBGMEnabled, setBGMVolume, loadBGMAsync } from '../utils/sound';
+import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, unloadBGMAsync, setBGMEnabled, setBGMVolume, loadBGMAsync } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
 import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS, CELL_SIZE, GRID_PADDING } from '../constants/grid';
@@ -139,6 +139,7 @@ export default function GameScreen() {
       setBGMVolume(saved.bgmVolume);
       await loadBGMAsync();
     })();
+    return () => { unloadBGMAsync(); };
   }, []);
 
   // Check if tutorial should be shown
