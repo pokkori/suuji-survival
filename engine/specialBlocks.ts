@@ -39,12 +39,6 @@ export function executeSpecialBlock(
   }
 }
 
-export const SPECIAL_BLOCK_ICONS: Record<SpecialBlockType, string> = {
-  bomb: '💣',
-  freeze: '❄️',
-  double: '×2',
-  wild: '⭐',
-};
 
 export const SPECIAL_BLOCK_COLORS: Record<SpecialBlockType, string> = {
   bomb: '#FF4444',
