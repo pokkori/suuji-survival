@@ -12,7 +12,10 @@ function getCellCountBonus(count: number): number {
     case 2: return 1.0;
     case 3: return 1.5;
     case 4: return 2.0;
-    default: return count >= 5 ? 2.5 : 1.0;
+    case 5: return 2.5;
+    case 6: return 3.5;
+    case 7: return 5.0;
+    default: return count >= 8 ? 7.0 : 1.0;
   }
 }
 
@@ -46,7 +49,10 @@ export function calculateChainScore(chainLevel: number, baseScore: number): numb
     case 2: multiplier = 1.5; break;
     case 3: multiplier = 2.5; break;
     case 4: multiplier = 4; break;
-    default: multiplier = chainLevel >= 5 ? 6 : 1; break;
+    case 5: multiplier = 6; break;
+    case 6: multiplier = 9; break;
+    case 7: multiplier = 12; break;
+    default: multiplier = chainLevel >= 8 ? 16 : 1; break;
   }
   return Math.floor(baseScore * multiplier);
 }

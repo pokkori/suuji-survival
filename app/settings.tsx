@@ -7,7 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useStorage } from '../hooks/useStorage';
 import { STORAGE_KEYS } from '../constants/storage';
 import { UserSettings } from '../types';
-import { setSEEnabled, setSEVolume } from '../utils/sound';
+import { setSEEnabled, setSEVolume, setBGMEnabled, setBGMVolume } from '../utils/sound';
 import { setHapticsEnabled } from '../utils/haptics';
 
 const DEFAULT_SETTINGS: UserSettings = {
@@ -32,6 +32,8 @@ export default function SettingsScreen() {
       setSEEnabled(saved.seEnabled);
       setSEVolume(saved.seVolume);
       setHapticsEnabled(saved.hapticsEnabled);
+      setBGMEnabled(saved.bgmEnabled);
+      setBGMVolume(saved.bgmVolume);
     })();
   }, []);
 
@@ -44,6 +46,8 @@ export default function SettingsScreen() {
     if (key === 'seEnabled') setSEEnabled(value as boolean);
     if (key === 'seVolume') setSEVolume(value as number);
     if (key === 'hapticsEnabled') setHapticsEnabled(value as boolean);
+    if (key === 'bgmEnabled') setBGMEnabled(value as boolean);
+    if (key === 'bgmVolume') setBGMVolume(value as number);
   }, [settings, storage]);
 
   const handleReset = useCallback(() => {

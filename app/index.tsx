@@ -15,6 +15,7 @@ export default function TitleScreen() {
   const storage = useStorage();
   const [bestScore, setBestScore] = useState(0);
   const [coins, setCoins] = useState(0);
+  const [topScores, setTopScores] = useState<Array<{ score: number }>>([]);
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -23,6 +24,8 @@ export default function TitleScreen() {
       setBestScore(best);
       const c = await storage.getNumber(STORAGE_KEYS.COINS, 0);
       setCoins(c);
+      const rankData = await storage.getItem<Array<{ score: number; date: string }>>(STORAGE_KEYS.RANKING_ALL, []);
+      setTopScores(rankData.slice(0, 3));
     })();
   }, []);
 
@@ -128,6 +131,23 @@ export default function TitleScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* MY TOP 3 */}
+        {topScores.length > 0 && (
+          <View style={styles.topScoresRow}>
+            {topScores.map((entry, i) => {
+              const medals = ['🥇', '🥈', '🥉'];
+              return (
+                <View key={i} style={styles.topScoreItem}>
+                  <Text style={[styles.topScoreMedal]}>{medals[i]}</Text>
+                  <Text style={[styles.topScoreValue, { color: colors.cellTextColor }]}>
+                    {formatNumber(entry.score)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* Best score and coins */}
         <View style={styles.infoRow}>
           <Text style={[styles.bestScore, { color: colors.cellTextColor }]}>
@@ -216,6 +236,24 @@ const styles = StyleSheet.create({
   iconLabel: {
     fontSize: 12,
     marginTop: 4,
+  },
+  topScoresRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 8,
+  },
+  topScoreItem: {
+    alignItems: 'center',
+  },
+  topScoreMedal: {
+    fontSize: 20,
+  },
+  topScoreValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 2,
   },
   infoRow: {
     flexDirection: 'row',

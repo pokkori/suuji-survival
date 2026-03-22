@@ -27,7 +27,7 @@ import { ChainDisplay } from '../components/ChainDisplay';
 import { formatNumber } from '../utils/formatNumber';
 import { generateScoreCard } from '../utils/shareImage';
 import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
-import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume } from '../utils/sound';
+import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, setBGMEnabled, setBGMVolume } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
 import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS } from '../constants/grid';
@@ -114,6 +114,8 @@ export default function GameScreen() {
       setSEEnabled(saved.seEnabled);
       setSEVolume(saved.seVolume);
       setHapticsEnabled(saved.hapticsEnabled);
+      setBGMEnabled(saved.bgmEnabled);
+      setBGMVolume(saved.bgmVolume);
     })();
   }, []);
 
@@ -135,8 +137,13 @@ export default function GameScreen() {
 
   // Haptics + sound feedback for game events
   useEffect(() => {
+    // Start BGM when playing begins
+    if (gameState.phase === 'playing' && prevPhaseRef.current !== 'playing' && prevPhaseRef.current !== 'fever' && prevPhaseRef.current !== 'cascading') {
+      playBGM('normal');
+    }
     // Game over haptic + sound
     if (gameState.phase === 'gameover' && prevPhaseRef.current !== 'gameover') {
+      stopBGM();
       hapticGameOver();
       playGameOverSound();
     }
@@ -189,6 +196,7 @@ export default function GameScreen() {
     if (gameState.fever.isActive && !prevFeverRef.current) {
       hapticFever();
       playFeverSound();
+      playBGM('fever');
       // Start fever hue rotation
       feverHue.value = 0;
       feverHue.value = withRepeat(
@@ -197,6 +205,7 @@ export default function GameScreen() {
         false,
       );
     } else if (!gameState.fever.isActive && prevFeverRef.current) {
+      playBGM('normal');
       cancelAnimation(feverHue);
       feverHue.value = 0;
     }
@@ -392,10 +401,19 @@ export default function GameScreen() {
     wordleGrid: string,
   ): string => {
     const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
+    let challengeComment: string;
+    if (isNewRecord) {
+      challengeComment = '🏆 これは俺の新記録！あなたも挑戦して！';
+    } else if (score > 5000) {
+      challengeComment = '📊 ベスト超えを目指せ！あなたは？';
+    } else {
+      challengeComment = '👆 隣の数字をなぞって合計10！簡単そうで難しい😅';
+    }
     return [
       `${recordMark}数字サバイバル`,
       `スコア: ${score.toLocaleString()}`,
       `最大チェーン: ${maxChain}連鎖（${maxChainLevel}段階カスケード）`,
+      challengeComment,
       '',
       wordleGrid,
       '#数字サバイバル #NumberSurvivor',

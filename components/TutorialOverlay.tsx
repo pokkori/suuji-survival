@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { ThemeColors } from '../types';
 
 interface Props {
@@ -50,6 +50,84 @@ const TUTORIAL_PAGES = [
   },
 ];
 
+// Mini grid demo: 3x3 cells with values [3,4,3, 1,2,7, 5,6,2]
+// The demo highlights cells 0,1,2 (3+4+3=10) in sequence then fades out
+const DEMO_VALUES = [3, 4, 3, 1, 2, 7, 5, 6, 2];
+const DEMO_PATH = [0, 1, 2]; // indices of cells that sum to 10
+
+function AnimatedDemo({ colors }: { colors: ThemeColors }) {
+  const [activeStep, setActiveStep] = useState(-1);
+  const [cleared, setCleared] = useState(false);
+  const labelOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let step = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const runDemo = () => {
+      setCleared(false);
+      labelOpacity.setValue(0);
+      setActiveStep(-1);
+
+      const highlightNext = () => {
+        if (step < DEMO_PATH.length) {
+          setActiveStep(DEMO_PATH[step]);
+          step++;
+          timeoutId = setTimeout(highlightNext, 500);
+        } else {
+          // All 3 cells highlighted - show cleared state + label
+          setCleared(true);
+          Animated.timing(labelOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+          timeoutId = setTimeout(() => {
+            // Reset and loop
+            step = 0;
+            setActiveStep(-1);
+            setCleared(false);
+            labelOpacity.setValue(0);
+            timeoutId = setTimeout(runDemo, 500);
+          }, 1500);
+        }
+      };
+
+      timeoutId = setTimeout(highlightNext, 400);
+    };
+
+    runDemo();
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  return (
+    <View style={demoStyles.container}>
+      <View style={demoStyles.grid}>
+        {DEMO_VALUES.map((val, i) => {
+          const isActive = DEMO_PATH.includes(i) && DEMO_PATH.indexOf(i) <= DEMO_PATH.indexOf(activeStep);
+          const isCleared = cleared && DEMO_PATH.includes(i);
+          return (
+            <View
+              key={i}
+              style={[
+                demoStyles.cell,
+                isActive && !isCleared && { backgroundColor: colors.accentColor, borderColor: colors.accentColor },
+                isCleared && { backgroundColor: 'transparent', borderColor: 'transparent' },
+                !isActive && !isCleared && { backgroundColor: colors.gridBackground, borderColor: colors.accentColor + '55' },
+              ]}
+            >
+              {!isCleared && (
+                <Text style={[demoStyles.cellText, { color: isActive ? '#000' : colors.cellTextColor }]}>
+                  {val}
+                </Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+      <Animated.Text style={[demoStyles.label, { opacity: labelOpacity, color: colors.accentColor }]}>
+        3+4+3=10 ✅
+      </Animated.Text>
+    </View>
+  );
+}
+
 export const TutorialOverlay: React.FC<Props> = ({ colors, onDismiss }) => {
   const [pageIndex, setPageIndex] = useState(0);
   const currentPage = TUTORIAL_PAGES[pageIndex];
@@ -59,6 +137,8 @@ export const TutorialOverlay: React.FC<Props> = ({ colors, onDismiss }) => {
     <View style={styles.overlay}>
       <View style={[styles.card, { backgroundColor: colors.gridBackground }]}>
         <Text style={[styles.title, { color: colors.accentColor }]}>{currentPage.title}</Text>
+
+        {pageIndex === 0 && <AnimatedDemo colors={colors} />}
 
         {currentPage.steps.map((step, i) => (
           <View key={i} style={styles.stepRow}>
@@ -97,6 +177,37 @@ export const TutorialOverlay: React.FC<Props> = ({ colors, onDismiss }) => {
     </View>
   );
 };
+
+const demoStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 126,
+    height: 126,
+    gap: 3,
+  },
+  cell: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cellText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  label: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
 
 const styles = StyleSheet.create({
   overlay: {

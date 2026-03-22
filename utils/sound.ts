@@ -128,6 +128,66 @@ export function playSpecialBlockSound() {
   playTone(1000, 80, 'square', 0.5, 600);
 }
 
+// ---- BGM control ----
+let bgmIntervalId: ReturnType<typeof setInterval> | null = null;
+let bgmGainNode: GainNode | null = null;
+let bgmEnabled = true;
+let bgmVolume = 0.3;
+
+export function playBGM(mode: 'normal' | 'fever' = 'normal'): void {
+  const ctx = getAudioContext();
+  if (!ctx || !bgmEnabled) return;
+  stopBGM();
+
+  const gain = ctx.createGain();
+  gain.gain.value = bgmVolume;
+  gain.connect(ctx.destination);
+  bgmGainNode = gain;
+
+  // アルペジオ音列（Cメジャー: C4-E4-G4-A4-G4-E4）
+  const notes = mode === 'fever'
+    ? [523, 659, 784, 1047, 784, 659] // 高BPM
+    : [262, 330, 392, 523, 392, 330]; // 通常BPM
+  const bpm = mode === 'fever' ? 180 : 120;
+  const beatMs = 60000 / bpm;
+  let step = 0;
+
+  const playBGMNote = () => {
+    if (!ctx || !bgmGainNode) return;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = notes[step % notes.length];
+    osc.connect(bgmGainNode);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+    step++;
+  };
+
+  playBGMNote();
+  bgmIntervalId = setInterval(playBGMNote, beatMs);
+}
+
+export function stopBGM(): void {
+  if (bgmIntervalId !== null) {
+    clearInterval(bgmIntervalId);
+    bgmIntervalId = null;
+  }
+  if (bgmGainNode) {
+    bgmGainNode.gain.value = 0;
+    bgmGainNode = null;
+  }
+}
+
+export function setBGMEnabled(enabled: boolean): void {
+  bgmEnabled = enabled;
+  if (!enabled) stopBGM();
+}
+
+export function setBGMVolume(vol: number): void {
+  bgmVolume = vol;
+  if (bgmGainNode) bgmGainNode.gain.value = vol;
+}
+
 /** Chain sound: pitch rises with chain level. C4→E4→G4→C5, 5+ = arpeggio fanfare */
 export function playChainSound(chainLevel: number) {
   if (!seEnabled) return;
