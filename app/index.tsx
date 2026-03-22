@@ -42,6 +42,9 @@ export default function TitleScreen() {
         <View style={styles.titleContainer}>
           <Text style={[styles.titleJP, { color: colors.accentColor }]}>数字サバイバル</Text>
           <Text style={[styles.titleEN, { color: colors.cellTextColor }]}>NUMBER SURVIVOR</Text>
+          <Text style={[styles.ruleHint, { color: colors.cellTextColor }]}>
+            隣接セルをスワイプして合計10を作ろう！
+          </Text>
         </View>
 
         {/* Decorative numbers */}
@@ -226,5 +229,13 @@ const styles = StyleSheet.create({
   coinText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  ruleHint: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginTop: 12,
+    opacity: 0.85,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
 });
