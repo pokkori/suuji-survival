@@ -71,6 +71,7 @@ export default function GameScreen() {
   const storage = useStorage();
   const [prevBest, setPrevBest] = useState(0);
   const [currentCoins, setCurrentCoins] = useState(0);
+  const [bestMaxChain, setBestMaxChain] = useState(0);
   const gameOverSavedRef = useRef(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const prevPhaseRef = useRef<string>('idle');
@@ -155,6 +156,7 @@ export default function GameScreen() {
   useEffect(() => {
     setPrevBest(gameState.score.best);
     storage.getNumber(STORAGE_KEYS.COINS, 0).then(c => setCurrentCoins(c));
+    storage.getNumber(STORAGE_KEYS.HIGHEST_COMBO, 0).then(v => setBestMaxChain(v));
     // 常に即時開始（チュートリアルは上にオーバーレイ表示）
     startGame();
   }, []);
@@ -771,6 +773,7 @@ export default function GameScreen() {
           currentCoins={currentCoins}
           onCoinRevive={handleCoinRevive}
           personalBest={prevBest}
+          bestMaxChain={bestMaxChain}
         />
       )}
     </SafeAreaView>

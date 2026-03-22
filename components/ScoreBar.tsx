@@ -64,6 +64,12 @@ export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeM
               COMBO: {combo.count}
             </Text>
           )}
+          {combo.count === 4 && (
+            <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: 'bold' }}>あと1でx2!</Text>
+          )}
+          {combo.count === 9 && (
+            <Text style={{ color: '#FF6B00', fontSize: 10, fontWeight: 'bold' }}>あと1でx3!</Text>
+          )}
         </View>
       </View>
       <View style={styles.feverRow}>

@@ -41,11 +41,12 @@ interface Props {
   currentCoins: number;
   onCoinRevive: () => void;
   personalBest: number;
+  bestMaxChain?: number;
 }
 
 export const GameOverOverlay: React.FC<Props> = ({
   score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest, dailyStreak,
-  currentCoins, onCoinRevive, personalBest,
+  currentCoins, onCoinRevive, personalBest, bestMaxChain,
 }) => {
   const earnedCoins = scoreToCoins(score.current);
   const rankLabel: string = (() => {
@@ -179,6 +180,14 @@ export const GameOverOverlay: React.FC<Props> = ({
                 5コンボを繋げるとスコアが跳ね上がります
               </Text>
             )}
+          </View>
+        )}
+
+        {bestMaxChain !== undefined && bestMaxChain > 0 && (score.maxChain ?? 0) >= bestMaxChain * 0.9 && (score.maxChain ?? 0) < bestMaxChain && (
+          <View style={{ backgroundColor: 'rgba(255,107,0,0.15)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginTop: 6, width: '100%', alignItems: 'center' }}>
+            <Text style={{ color: '#FF8C00', fontSize: 13, fontWeight: 'bold' }}>
+              コンボ記録まであと{bestMaxChain - (score.maxChain ?? 0)}！
+            </Text>
           </View>
         )}
 
