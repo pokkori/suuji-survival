@@ -33,6 +33,7 @@ import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS, CELL_SIZE, GRID_PADDING } from '../constants/grid';
 import { AdBanner } from '../components/AdBanner';
 import { ScorePopup } from '../components/ScorePopup';
+import { DigiTron } from '../components/DigiTron';
 
 // Unique ID counter for particle effects
 let particleIdCounter = 0;
@@ -760,6 +761,12 @@ export default function GameScreen() {
 
       {/* Game over */}
       <AdBanner />
+
+      {/* DigiTron mascot — bottom-right corner, above AdBanner */}
+      <View style={styles.digitronContainer} pointerEvents="none">
+        <DigiTron combo={gameState.combo.count} />
+      </View>
+
       {gameState.phase === 'gameover' && (
         <GameOverOverlay
           score={gameState.score}
@@ -887,5 +894,11 @@ const styles = StyleSheet.create({
   timeAttackText: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  digitronContainer: {
+    position: 'absolute',
+    bottom: 72,
+    right: 12,
+    zIndex: 80,
   },
 });
