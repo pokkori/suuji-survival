@@ -103,7 +103,13 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
             styles.text,
             {
               color: colors.cellTextColor,
-              fontSize: content.type === 'special' ? CELL_SIZE * 0.4 : CELL_SIZE * 0.45,
+              fontSize: content.type === 'special'
+                ? CELL_SIZE * 0.4
+                : content.type === 'number' && content.value >= 7
+                  ? 36
+                  : content.type === 'number' && content.value >= 4
+                    ? 32
+                    : 28,
             },
           ]}
         >
@@ -122,6 +128,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   text: {
     fontWeight: 'bold',

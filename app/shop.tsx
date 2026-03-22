@@ -155,7 +155,7 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={[styles.premiumCard, styles.premiumDisabled, { backgroundColor: colors.gridBackground }]}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
+          onPress={() => Alert.alert('お知らせ', 'ただいま準備中です。しばらくお待ちください。')}
         >
           <View>
             <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>広告除去</Text>
@@ -167,7 +167,7 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('コイン購入', '500コインを¥160で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
+          onPress={() => Alert.alert('お知らせ', 'ただいま準備中です。しばらくお待ちください。')}
         >
           <View>
             <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>500コイン</Text>
@@ -179,7 +179,7 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={[styles.premiumCard, { backgroundColor: colors.gridBackground }]}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('コイン購入', '1500コインを¥400で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
+          onPress={() => Alert.alert('お知らせ', 'ただいま準備中です。しばらくお待ちください。')}
         >
           <View>
             <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>1500コイン</Text>

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable, StyleSheet, Share, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, Share, Platform, Animated as RNAnimated } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -30,13 +30,16 @@ import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialB
 import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, setBGMEnabled, setBGMVolume } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
 import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
-import { COLS, ROWS } from '../constants/grid';
+import { COLS, ROWS, CELL_SIZE, GRID_PADDING } from '../constants/grid';
 import { AdBanner } from '../components/AdBanner';
+import { ScorePopup } from '../components/ScorePopup';
 
 // Unique ID counter for particle effects
 let particleIdCounter = 0;
 // Unique ID counter for shockwave effects
 let shockwaveIdCounter = 0;
+// Unique ID counter for score popups
+let scorePopupIdCounter = 0;
 
 interface ParticleInstance {
   id: number;
@@ -50,6 +53,13 @@ interface ShockwaveInstance {
   row: number;
   col: number;
   comboCount: number;
+}
+
+interface ScorePopupInstance {
+  id: number;
+  value: number;
+  x: number;
+  y: number;
 }
 
 export default function GameScreen() {
@@ -73,6 +83,7 @@ export default function GameScreen() {
   const prevClearEventRef = useRef<ClearEvent | null>(null);
   const [particles, setParticles] = useState<ParticleInstance[]>([]);
   const [shockwaves, setShockwaves] = useState<ShockwaveInstance[]>([]);
+  const [scorePopups, setScorePopups] = useState<ScorePopupInstance[]>([]);
   const prevChainEventRef = useRef<ChainEvent | null>(null);
 
   const [showMidShareHint, setShowMidShareHint] = useState(false);
@@ -90,6 +101,12 @@ export default function GameScreen() {
 
   // Fever background pulse
   const feverHue = useSharedValue(0);
+
+  // Fever start white flash (React Native Animated, separate from Reanimated flashOpacity)
+  const feverFlashAnim = useRef(new RNAnimated.Value(0)).current;
+  // Fever grid scale pulse (React Native Animated)
+  const feverGridScale = useRef(new RNAnimated.Value(1)).current;
+  const feverGridLoopRef = useRef<RNAnimated.CompositeAnimation | null>(null);
 
   const {
     gameState,
@@ -200,6 +217,21 @@ export default function GameScreen() {
       hapticFever();
       playFeverSound();
       playBGM(148);
+      // White flash on fever start
+      RNAnimated.sequence([
+        RNAnimated.timing(feverFlashAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+        RNAnimated.timing(feverFlashAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      ]).start();
+      // Grid scale pulse loop
+      feverGridScale.setValue(1);
+      const loop = RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(feverGridScale, { toValue: 1.02, duration: 250, useNativeDriver: true }),
+          RNAnimated.timing(feverGridScale, { toValue: 1, duration: 250, useNativeDriver: true }),
+        ])
+      );
+      feverGridLoopRef.current = loop;
+      loop.start();
       // Start fever hue rotation
       feverHue.value = 0;
       feverHue.value = withRepeat(
@@ -211,6 +243,12 @@ export default function GameScreen() {
       playBGM(104);
       cancelAnimation(feverHue);
       feverHue.value = 0;
+      // Stop grid scale pulse
+      if (feverGridLoopRef.current) {
+        feverGridLoopRef.current.stop();
+        feverGridLoopRef.current = null;
+      }
+      feverGridScale.setValue(1);
     }
     prevFeverRef.current = gameState.fever.isActive;
   }, [gameState.fever.isActive]);
@@ -294,6 +332,20 @@ export default function GameScreen() {
           comboCount: clearEvent.comboCount,
         };
         setShockwaves(prev => [...prev, newShockwave]);
+
+        // Score popup at center of cleared area
+        const popupX = GRID_PADDING + centerPos.col * CELL_SIZE + CELL_SIZE / 2 - 20;
+        const popupY = centerPos.row * CELL_SIZE + CELL_SIZE / 2 - 12;
+        const popupValue = clearEvent.comboCount >= 2
+          ? clearEvent.comboCount * 10
+          : 10;
+        const newPopup: ScorePopupInstance = {
+          id: scorePopupIdCounter++,
+          value: popupValue,
+          x: popupX,
+          y: popupY,
+        };
+        setScorePopups(prev => [...prev, newPopup]);
       }
     }
   }, [gameState.lastClearEvent]);
@@ -304,6 +356,10 @@ export default function GameScreen() {
 
   const removeShockwave = useCallback((id: number) => {
     setShockwaves(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  const removeScorePopup = useCallback((id: number) => {
+    setScorePopups(prev => prev.filter(p => p.id !== id));
   }, []);
 
   const shakeStyle = useAnimatedStyle(() => ({
@@ -504,6 +560,12 @@ export default function GameScreen() {
         <Animated.View style={[styles.feverOverlay, feverBgStyle]} />
       )}
 
+      {/* Fever start white flash overlay */}
+      <RNAnimated.View
+        style={[styles.feverFlashOverlay, { opacity: feverFlashAnim }]}
+        pointerEvents="none"
+      />
+
       {/* 5+ combo fullscreen white flash */}
       <Animated.View style={[styles.flashOverlay, flashStyle]} pointerEvents="none" />
 
@@ -548,6 +610,7 @@ export default function GameScreen() {
 
       {/* Grid with screen shake */}
       <Animated.View style={[styles.gridContainer, shakeStyle]}>
+        <RNAnimated.View style={[styles.gridInner, { transform: [{ scale: feverGridScale }] }]}>
         <GridView
           grid={gameState.grid}
           colors={colors}
@@ -557,6 +620,7 @@ export default function GameScreen() {
           onSwipeEnd={handleSwipeEndWithHaptic}
           disabled={!isPlaying || gameState.isPaused || showTutorial || gameState.phase === 'cascading'}
         />
+        </RNAnimated.View>
 
         {/* Particles overlay */}
         <View style={particleStyles.particleContainer}>
@@ -589,6 +653,17 @@ export default function GameScreen() {
 
         {/* Chain display */}
         <ChainDisplay chainEvent={gameState.lastChainEvent} />
+
+        {/* Score popups */}
+        {scorePopups.map(p => (
+          <ScorePopup
+            key={p.id}
+            value={p.value}
+            x={p.x}
+            y={p.y}
+            onDone={() => removeScorePopup(p.id)}
+          />
+        ))}
       </Animated.View>
 
       {/* Sum display during swipe */}
@@ -601,7 +676,7 @@ export default function GameScreen() {
             },
           ]}>
             SUM: {gameState.swipePath.currentSum}/10
-            {gameState.swipePath.isComplete ? ' \u2705' : ''}
+            {gameState.swipePath.isComplete ? <Text style={{ color: '#4CAF50' }}> CLEAR!</Text> : ''}
           </Text>
         </View>
       )}
@@ -627,7 +702,7 @@ export default function GameScreen() {
             style={[styles.quitButton, { borderColor: colors.accentColor }]}
             onPress={handleHome}
           >
-            <Text style={[styles.quitText, { color: colors.accentColor }]}>{'\uD83C\uDFE0'} タイトルへ</Text>
+            <Text style={[styles.quitText, { color: colors.accentColor }]}>HOME タイトルへ</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -680,6 +755,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     position: 'relative',
+  },
+  gridInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feverFlashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    zIndex: 150,
+    pointerEvents: 'none',
   },
   feverOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -93,8 +93,29 @@ export default function DailyScreen() {
 
   const [calendarStatuses, setCalendarStatuses] = useState<Record<string, string>>({});
   const [weeklyProgress, setWeeklyProgress] = useState<{ totalScore: number; gameCount: number } | null>(null);
+  const [past7DayResults, setPast7DayResults] = useState<{ date: string; result: 'CLEAR' | 'FAIL' | '--' }[]>([]);
   const WEEKLY_TARGET_SCORE = 50000;
   const WEEKLY_GAME_TARGET = 7;
+
+  useEffect(() => {
+    (async () => {
+      // Load past 7 days from daily_results AsyncStorage key
+      const raw = await AsyncStorage.getItem('daily_results');
+      const allResults: { date: string; result: 'CLEAR' | 'FAIL' }[] = raw ? JSON.parse(raw) : [];
+      const resultMap: Record<string, 'CLEAR' | 'FAIL'> = {};
+      for (const entry of allResults) {
+        resultMap[entry.date] = entry.result;
+      }
+      const past7: { date: string; result: 'CLEAR' | 'FAIL' | '--' }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        past7.push({ date: dateStr, result: resultMap[dateStr] ?? '--' });
+      }
+      setPast7DayResults(past7);
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -197,6 +218,22 @@ export default function DailyScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
+          ── 過去7日間の結果 ──
+        </Text>
+        <View style={styles.past7Row}>
+          {past7DayResults.map(item => {
+            const labelColor = item.result === 'CLEAR' ? '#00FF88' : item.result === 'FAIL' ? '#FF4444' : '#555';
+            const dayLabel = item.date.slice(5); // MM-DD
+            return (
+              <View key={item.date} style={styles.past7Col}>
+                <Text style={[styles.past7Day, { color: '#aaa' }]}>{dayLabel}</Text>
+                <Text style={[styles.past7Result, { color: labelColor }]}>{item.result}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
           ── 連続達成 ──
         </Text>
         <Text style={[styles.streakText, { color: colors.accentColor }]}>
@@ -293,6 +330,10 @@ const styles = StyleSheet.create({
   dayCol: { alignItems: 'center' },
   dayName: { fontSize: 14, marginBottom: 4 },
   dayStatus: { fontSize: 18 },
+  past7Row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  past7Col: { alignItems: 'center', flex: 1 },
+  past7Day: { fontSize: 10, marginBottom: 4 },
+  past7Result: { fontSize: 11, fontWeight: 'bold' },
   completedBanner: { backgroundColor: 'rgba(0,255,170,0.15)', borderRadius: 12, padding: 16, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: 'rgba(0,255,170,0.4)', marginTop: 12 },
   completedTitle: { color: '#00FFAA', fontSize: 20, fontWeight: 'bold' },
   completedScore: { color: '#FFFFFF', fontSize: 16 },
