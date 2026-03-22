@@ -36,7 +36,7 @@ export function updateCombo(
 }
 
 export function getComboText(combo: number, isFever?: boolean, chainLevel?: number): string | null {
-  if (isFever && chainLevel && chainLevel >= 3) return '🔥 PERFECT CHAIN!!';
+  if (isFever && chainLevel && chainLevel >= 3) return 'PERFECT CHAIN!!';
   if (combo >= 10) return 'GODLIKE!';
   if (combo >= 7) return 'INCREDIBLE!';
   if (combo >= 5) return 'AMAZING!';
