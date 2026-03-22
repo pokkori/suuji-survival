@@ -127,30 +127,6 @@ export default function TitleScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.accentColor }]}
-            onPress={() => router.push('/ranking')}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.accentColor }]}>
-              ランキング
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.1)', marginTop: 8 }]}
-            activeOpacity={0.7}
-            onPress={async () => {
-              const text = `【数字サバイバル】合計10を目指してスワイプするパズルゲーム！\nあなたのスコアは？チェーンでコンボを狙え\nhttps://suuji-survival.vercel.app #数字サバイバル`;
-              if (typeof navigator !== 'undefined' && navigator.share) {
-                await navigator.share({ text });
-              }
-            }}
-          >
-            <Text style={[styles.secondaryButtonText, { color: '#FF6B35' }]}>
-              友達に挑戦する
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[
               styles.secondaryButton,
               { borderColor: '#9B59B6', backgroundColor: 'rgba(155,89,182,0.1)', marginTop: 8, minHeight: 44 },
@@ -174,6 +150,10 @@ export default function TitleScreen() {
               <IconSVG type="shop" size={28} color={colors.accentColor} />
             </Animated.View>
             <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>ショップ</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/ranking')}>
+            <IconSVG type="achievements" size={28} color={colors.accentColor} />
+            <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>ランキング</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/settings')}>
             <IconSVG type="settings" size={28} color={colors.cellTextColor} />
