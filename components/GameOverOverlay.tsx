@@ -151,6 +151,8 @@ export const GameOverOverlay: React.FC<Props> = ({
         <TouchableOpacity
           style={{ marginTop: 8, padding: 10, backgroundColor: "rgba(255,107,53,0.2)", borderRadius: 10 }}
           onPress={onShare}
+          accessibilityLabel="この結果をシェアする"
+          accessibilityRole="button"
         >
           <Text style={{ color: "#FF6B35", fontWeight: "bold", textAlign: "center" }}>
             この結果をシェアする
@@ -183,6 +185,16 @@ export const GameOverOverlay: React.FC<Props> = ({
           </View>
         )}
 
+        {bestMaxChain !== undefined && bestMaxChain > 0 && (score.maxChain ?? 0) > bestMaxChain && (
+          <View style={{ backgroundColor: 'rgba(255,215,0,0.18)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, marginTop: 6, width: '100%', alignItems: 'center', borderWidth: 2, borderColor: '#FFD700' }}>
+            <Text style={{ color: '#FFD700', fontSize: 20, fontWeight: 'bold', letterSpacing: 1 }}>
+              NEW COMBO RECORD!
+            </Text>
+            <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: 'bold', marginTop: 2 }}>
+              MAX x{score.maxChain} 達成！
+            </Text>
+          </View>
+        )}
         {bestMaxChain !== undefined && bestMaxChain > 0 && (score.maxChain ?? 0) >= bestMaxChain * 0.9 && (score.maxChain ?? 0) < bestMaxChain && (
           <View style={{ backgroundColor: 'rgba(255,107,0,0.15)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginTop: 6, width: '100%', alignItems: 'center' }}>
             <Text style={{ color: '#FF8C00', fontSize: 13, fontWeight: 'bold' }}>
@@ -257,6 +269,8 @@ export const GameOverOverlay: React.FC<Props> = ({
             backgroundColor: streakDays >= 2 ? '#FF6B35' : '#4A90E2',
           }]}
           onPress={onShare}
+          accessibilityLabel={streakDays >= 2 ? `${streakDays}日連続をシェアする` : '結果をシェアして友達を招待する'}
+          accessibilityRole="button"
         >
           <Text style={styles.buttonText}>
             {streakDays >= 2

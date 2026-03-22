@@ -742,6 +742,8 @@ export default function GameScreen() {
             paddingHorizontal: 20, paddingVertical: 10, zIndex: 100
           }}
           onPress={() => { handleShare(); setShowMidShareHint(false); }}
+          accessibilityLabel="チェーン記録をシェアする"
+          accessibilityRole="button"
         >
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
             チェーン×{gameState.maxChainLevel}！シェアする？
