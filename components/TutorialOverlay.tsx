@@ -156,6 +156,16 @@ export const TutorialOverlay: React.FC<Props> = ({ colors, onDismiss }) => {
   return (
     <View style={styles.overlay}>
       <View style={[styles.card, { backgroundColor: colors.gridBackground }]}>
+        {/* Skip button top-right */}
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={onDismiss}
+          accessibilityLabel="チュートリアルをスキップする"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.skipText, { color: colors.cellTextColor }]}>スキップ</Text>
+        </TouchableOpacity>
+
         <Text style={[styles.title, { color: colors.accentColor }]}>{currentPage.title}</Text>
 
         {pageIndex === 0 && <AnimatedDemo colors={colors} />}
@@ -190,6 +200,8 @@ export const TutorialOverlay: React.FC<Props> = ({ colors, onDismiss }) => {
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.accentColor }]}
           onPress={isLastPage ? onDismiss : () => setPageIndex(pageIndex + 1)}
+          accessibilityLabel={isLastPage ? 'チュートリアルを完了してゲームを始める' : '次のページへ進む'}
+          accessibilityRole="button"
         >
           <Text style={styles.buttonText}>{isLastPage ? 'OK！始める' : '次へ →'}</Text>
         </TouchableOpacity>
@@ -242,6 +254,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
+  },
+  skipButton: {
+    position: 'absolute',
+    top: 14,
+    right: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    zIndex: 10,
+  },
+  skipText: {
+    fontSize: 13,
+    opacity: 0.55,
   },
   title: {
     fontSize: 28,
