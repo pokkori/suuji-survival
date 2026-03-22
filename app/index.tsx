@@ -7,6 +7,7 @@ import { useStorage } from '../hooks/useStorage';
 import { STORAGE_KEYS } from '../constants/storage';
 import { formatNumber } from '../utils/formatNumber';
 import { AdBanner } from '../components/AdBanner';
+import { IconSVG } from '../components/IconButtonSVG';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,6 +50,23 @@ export default function TitleScreen() {
           <Text style={[styles.ruleHint, { color: colors.cellTextColor }]}>
             隣接セルをスワイプして合計10を作ろう！
           </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Text style={{
+              color: '#FF4500', fontSize: 11, fontWeight: 'bold',
+              backgroundColor: 'rgba(255,69,0,0.15)',
+              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+            }}>60秒モード</Text>
+            <Text style={{
+              color: '#00FFAA', fontSize: 11, fontWeight: 'bold',
+              backgroundColor: 'rgba(0,255,170,0.15)',
+              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+            }}>デイリー</Text>
+            <Text style={{
+              color: '#FFD700', fontSize: 11, fontWeight: 'bold',
+              backgroundColor: 'rgba(255,215,0,0.15)',
+              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+            }}>8段カスケード</Text>
+          </View>
         </View>
 
         {/* Decorative numbers */}
@@ -81,11 +99,18 @@ export default function TitleScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            style={[styles.mainButton, { backgroundColor: '#FF4500', marginTop: 12 }]}
+            onPress={() => router.push('/game?mode=timeattack' as any)}
+          >
+            <Text style={styles.mainButtonText}>タイムアタック 60秒</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.secondaryButton, { borderColor: colors.accentColor }]}
             onPress={() => router.push('/daily')}
           >
             <Text style={[styles.secondaryButtonText, { color: colors.accentColor }]}>
-              📅 デイリー
+              デイリー
             </Text>
           </TouchableOpacity>
 
@@ -94,7 +119,7 @@ export default function TitleScreen() {
             onPress={() => router.push('/ranking')}
           >
             <Text style={[styles.secondaryButtonText, { color: colors.accentColor }]}>
-              🏆 ランキング
+              ランキング
             </Text>
           </TouchableOpacity>
 
@@ -109,7 +134,7 @@ export default function TitleScreen() {
             }}
           >
             <Text style={[styles.secondaryButtonText, { color: '#FF6B35' }]}>
-              🔥 友達に挑戦する
+              友達に挑戦する
             </Text>
           </TouchableOpacity>
         </View>
@@ -118,16 +143,16 @@ export default function TitleScreen() {
         <View style={styles.iconRow}>
           <TouchableOpacity style={[styles.iconButton, { opacity: 0.55 }]} onPress={() => router.push('/shop')}>
             <Animated.View style={{ transform: [{ translateY: floatAnim }] }}>
-              <Text style={styles.iconEmoji}>🎨</Text>
+              <IconSVG type="shop" size={28} color={colors.accentColor} />
             </Animated.View>
             <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>ショップ</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/settings')}>
-            <Text style={styles.iconEmoji}>⚙️</Text>
+            <IconSVG type="settings" size={28} color={colors.cellTextColor} />
             <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>設定</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/achievements')}>
-            <Text style={styles.iconEmoji}>🏅</Text>
+            <IconSVG type="achievements" size={28} color={colors.cellTextColor} />
             <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>実績</Text>
           </TouchableOpacity>
         </View>
@@ -136,7 +161,7 @@ export default function TitleScreen() {
         {topScores.length > 0 && (
           <View style={styles.topScoresRow}>
             {topScores.map((entry, i) => {
-              const medals = ['🥇', '🥈', '🥉'];
+              const medals = ['1位', '2位', '3位'];
               return (
                 <View key={i} style={styles.topScoreItem}>
                   <Text style={[styles.topScoreMedal]}>{medals[i]}</Text>
@@ -155,7 +180,7 @@ export default function TitleScreen() {
             BEST: {formatNumber(bestScore)}
           </Text>
           <Text style={[styles.coinText, { color: '#FFD700' }]}>
-            💰 {formatNumber(coins)}
+            COIN {formatNumber(coins)}
           </Text>
         </View>
         <AdBanner />

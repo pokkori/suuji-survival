@@ -48,18 +48,25 @@ export default function AchievementsScreen() {
                 },
               ]}
             >
-              <Text style={styles.icon}>
-                {isUnlocked ? achievement.icon : '🔒'}
-              </Text>
+              <View style={{
+                width: 32, height: 32, borderRadius: 16,
+                backgroundColor: isUnlocked ? "#4CAF50" : "#555",
+                alignItems: "center", justifyContent: "center",
+                marginRight: 12,
+              }}>
+                <Text style={{ color: "#fff", fontSize: 14, fontWeight: "bold" }}>
+                  {isUnlocked ? "OK" : "?"}
+                </Text>
+              </View>
               <View style={styles.cardContent}>
                 <Text style={[styles.cardTitle, { color: colors.cellTextColor }]}>
-                  {isUnlocked ? '✅' : ''} {achievement.title}
+                  {achievement.title}
                 </Text>
                 <Text style={[styles.cardDesc, { color: colors.cellTextColor }]}>
                   {achievement.description}
                 </Text>
                 <Text style={[styles.cardReward, { color: '#FFD700' }]}>
-                  報酬: {achievement.reward.coins}💰
+                  報酬: {achievement.reward.coins} COIN
                   {isUnlocked ? ' 達成済み' : ''}
                 </Text>
               </View>

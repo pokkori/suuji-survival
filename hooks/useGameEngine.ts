@@ -41,7 +41,7 @@ function createInitialState(): GameState {
   };
 }
 
-export function useGameEngine(dailySeed?: number) {
+export function useGameEngine(dailySeed?: number, timeLimitMs?: number) {
   const [gameState, setGameState] = useState<GameState>(createInitialState);
   const lastTickRef = useRef(Date.now());
   const dropTimerRef = useRef(0);
@@ -111,6 +111,11 @@ export function useGameEngine(dailySeed?: number) {
           const newGrid = dropNewRows(prev.grid, newRows);
           if (newGrid === null) {
             return { ...prev, phase: 'gameover' as GamePhase };
+          }
+
+          // Time attack: check time limit
+          if (timeLimitMs && prev.elapsedMs + deltaMs >= timeLimitMs) {
+            return { ...prev, grid: newGrid, phase: 'gameover' as GamePhase, elapsedMs: timeLimitMs };
           }
 
           const nextRows = generatePreviewRows(2, difficulty);
@@ -269,7 +274,7 @@ export function useGameEngine(dailySeed?: number) {
   const runCascade = useCallback((grid: Grid, chainLevel: number, accumulatedScore: number, accumulatedCleared: number) => {
     // 最大3回のカスケードループ（無限ループ防止）
     const cascadeCount = chainLevel - 1; // chainLevel 2 = cascadeCount 1
-    if (cascadeCount >= 3) {
+    if (cascadeCount >= 8) {
       // 上限到達 - カスケード終了
       setGameState(prev => {
         if (prev.phase !== 'cascading') return prev;
@@ -574,13 +579,14 @@ export function useGameEngine(dailySeed?: number) {
     await storage.setNumber(STORAGE_KEYS.TOTAL_SCORE, totalScore + score.current);
 
     // Update ranking
-    const ranking = await storage.getItem<Array<{ score: number; date: string; maxCombo: number }>>(
+    const ranking = await storage.getItem<Array<{ score: number; date: string; maxCombo: number; maxChainLevel?: number }>>(
       STORAGE_KEYS.RANKING_ALL, []
     );
     ranking.push({
       score: score.current,
       date: new Date().toISOString(),
       maxCombo: score.maxChain,
+      maxChainLevel: state.maxChainLevel ?? 1,
     });
     ranking.sort((a, b) => b.score - a.score);
     await storage.setItem(STORAGE_KEYS.RANKING_ALL, ranking.slice(0, 20));

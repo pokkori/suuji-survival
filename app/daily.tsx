@@ -10,6 +10,14 @@ import { getDateKey } from '../utils/dateKey';
 import { getDailyTargetScore, dateToSeed } from '../engine/rng';
 import { formatNumber } from '../utils/formatNumber';
 import { generateScoreCard } from '../utils/shareImage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+function getWeeklyKey(): string {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+}
 
 export default function DailyScreen() {
   const router = useRouter();
@@ -84,6 +92,9 @@ export default function DailyScreen() {
   });
 
   const [calendarStatuses, setCalendarStatuses] = useState<Record<string, string>>({});
+  const [weeklyProgress, setWeeklyProgress] = useState<{ totalScore: number; gameCount: number } | null>(null);
+  const WEEKLY_TARGET_SCORE = 50000;
+  const WEEKLY_GAME_TARGET = 7;
 
   useEffect(() => {
     (async () => {
@@ -106,6 +117,15 @@ export default function DailyScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const weekKey = getWeeklyKey();
+      const raw = await AsyncStorage.getItem(`@ns:weekly_challenge_${weekKey}`);
+      if (raw) setWeeklyProgress(JSON.parse(raw));
+      else setWeeklyProgress({ totalScore: 0, gameCount: 0 });
+    })();
+  }, []);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
@@ -118,7 +138,7 @@ export default function DailyScreen() {
 
       <View style={styles.content}>
         <Text style={[styles.dateText, { color: colors.cellTextColor }]}>
-          📅 {new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
+          {new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
         </Text>
 
         {challenge && (
@@ -141,7 +161,7 @@ export default function DailyScreen() {
               ]} />
             </View>
             <Text style={[styles.progressText, { color: colors.cellTextColor }]}>
-              {progress.toFixed(1)}% {challenge.completed ? '✅ クリア!' : ''}
+              {progress.toFixed(1)}% {challenge.completed ? 'クリア!' : ''}
             </Text>
 
             <Text style={[styles.attemptsText, { color: colors.cellTextColor }]}>
@@ -150,10 +170,10 @@ export default function DailyScreen() {
 
             {challenge.completed ? (
               <View style={styles.completedBanner}>
-                <Text style={styles.completedTitle}>🎉 本日のチャレンジ達成！</Text>
+                <Text style={styles.completedTitle}>本日のチャレンジ達成！</Text>
                 <Text style={styles.completedScore}>スコア: {challenge.bestScore?.toLocaleString()}</Text>
                 <TouchableOpacity style={styles.shareBtn} onPress={handleDailyShare}>
-                  <Text style={styles.shareBtnText}>📸 達成をシェア🔥</Text>
+                  <Text style={styles.shareBtnText}>達成をシェア</Text>
                 </TouchableOpacity>
               </View>
             ) : challenge.bestScore > 0 ? (
@@ -162,7 +182,7 @@ export default function DailyScreen() {
                   挑戦中 — ベスト: {challenge.bestScore.toLocaleString()}
                 </Text>
                 <TouchableOpacity style={[styles.shareBtn, { backgroundColor: colors.accentColor + '99' }]} onPress={handleDailyShare}>
-                  <Text style={styles.shareBtnText}>📤 途中経過をシェア</Text>
+                  <Text style={styles.shareBtnText}>途中経過をシェア</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -180,7 +200,7 @@ export default function DailyScreen() {
           ── 連続達成 ──
         </Text>
         <Text style={[styles.streakText, { color: colors.accentColor }]}>
-          🔥 {streak}日連続
+          {streak}日連続
         </Text>
 
         <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
@@ -189,12 +209,51 @@ export default function DailyScreen() {
         <View style={styles.weekRow}>
           {allChallenges.slice(-14).map(dateStr => {
             const status = calendarStatuses[dateStr];
-            const emoji = status === "today" ? "📍" : status === "cleared" ? "✅" : status === "failed" ? "🔴" : "⬜";
+            const emoji = status === "today" ? "TODAY" : status === "cleared" ? "OK" : status === "failed" ? "NG" : "--";
             return (
-              <Text key={dateStr} style={styles.dayStatus}>{emoji}</Text>
+              <Text key={dateStr} style={[styles.dayStatus, { fontSize: 10, color: status === "cleared" ? "#00FF88" : status === "failed" ? "#FF4444" : status === "today" ? "#FFD700" : "#555" }]}>{emoji}</Text>
             );
           })}
         </View>
+
+        {weeklyProgress !== null && (
+          <View style={{ marginTop: 20, padding: 16, backgroundColor: "rgba(0,255,170,0.05)", borderRadius: 12, borderWidth: 1, borderColor: "rgba(0,255,170,0.2)" }}>
+            <Text style={{ color: "#00FFAA", fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
+              週次チャレンジ
+            </Text>
+            <Text style={{ color: "#aaa", fontSize: 13, marginBottom: 12 }}>
+              今週のミッション（月曜リセット）
+            </Text>
+
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ color: "#fff", fontSize: 13 }}>今週7回プレイ</Text>
+              <View style={{ flexDirection: "row", gap: 4, marginTop: 6 }}>
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <View key={i} style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    backgroundColor: i < weeklyProgress.gameCount ? "#00FFAA" : "rgba(255,255,255,0.1)",
+                  }} />
+                ))}
+              </View>
+              <Text style={{ color: "#aaa", fontSize: 11, marginTop: 3 }}>
+                {weeklyProgress.gameCount}/7回 (完了で 500コイン)
+              </Text>
+            </View>
+
+            <View>
+              <Text style={{ color: "#fff", fontSize: 13 }}>今週合計50000点獲得</Text>
+              <View style={{ height: 6, backgroundColor: "#333", borderRadius: 3, marginTop: 6 }}>
+                <View style={{
+                  width: `${Math.min((weeklyProgress.totalScore / WEEKLY_TARGET_SCORE) * 100, 100)}%` as any,
+                  height: 6, backgroundColor: "#00FFAA", borderRadius: 3
+                }} />
+              </View>
+              <Text style={{ color: "#aaa", fontSize: 11, marginTop: 3 }}>
+                {weeklyProgress.totalScore.toLocaleString()}/{WEEKLY_TARGET_SCORE.toLocaleString()}点 (完了で 800コイン)
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

@@ -1,34 +1,51 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const distIndexPath = path.join(__dirname, '..', 'dist', 'index.html');
+const filePath = path.join(__dirname, "../dist/index.html");
 
-if (!fs.existsSync(distIndexPath)) {
-  console.error('dist/index.html not found. Run expo export first.');
-  process.exit(1);
-}
-
-let html = fs.readFileSync(distIndexPath, 'utf8');
-
-// 既にOGPタグが存在する場合はスキップ
-if (html.includes('og:image')) {
-  console.log('OGP tags already present, skipping.');
+if (!fs.existsSync(filePath)) {
+  console.log("dist/index.html not found, skipping");
   process.exit(0);
 }
 
-const ogpTags = `<meta property="og:type" content="website" />
-<meta property="og:title" content="数字サバイバル - スワイプで合計10を作る数字パズル" />
-<meta property="og:description" content="隣接セルをなぞって合計10を作る無料数字パズル！カスケード8連鎖・フィーバーモード・デイリーチャレンジ搭載。スコアをシェアして友達に挑戦しよう。" />
-<meta property="og:url" content="https://suuji-survival.vercel.app" />
-<meta property="og:image" content="https://suuji-survival.vercel.app/og-image.png" />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="数字サバイバル - スワイプで合計10を作る数字パズル" />
-<meta name="twitter:description" content="隣接セルをスワイプして合計10を作ろう！カスケード連鎖が気持ちいい数字パズル。" />
-<meta name="twitter:image" content="https://suuji-survival.vercel.app/og-image.png" />
-`;
+let html = fs.readFileSync(filePath, "utf8");
 
-html = html.replace('<link rel="icon"', ogpTags + '<link rel="icon"');
-fs.writeFileSync(distIndexPath, html, 'utf8');
-console.log('OGP tags injected into dist/index.html');
+// 1. lang="en" → lang="ja" に変更（常に実行）※スペース数に関わらずマッチ
+html = html.replace(/<html([^>]*?)\s+lang="en"/, '<html$1 lang="ja"');
+
+const TITLE = "数字サバイバル - 合計10スワイプパズル";
+const DESCRIPTION = "隣の数字をなぞって合計10にするシンプルパズル！チェーンコンボでハイスコアを狙え。フィーバーモードで爆発的スコアアップ！";
+
+// 2. titleタグをキーワード強化（常に実行）
+html = html.replace(
+  /<title[^>]*>数字サバイバル<\/title>/,
+  `<title>${TITLE}</title>`
+);
+// data-rh属性がある場合も対応
+html = html.replace(
+  /<title[^>]*><\/title>/,
+  `<title>${TITLE}</title>`
+);
+
+// 3. OGPタグ注入（未注入の場合のみ）
+if (!html.includes('property="og:title"')) {
+  const ogTags = `
+  <meta property="og:title" content="${TITLE}" />
+  <meta property="og:description" content="${DESCRIPTION}" />
+  <meta property="og:image" content="https://suuji-survival.vercel.app/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://suuji-survival.vercel.app" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${TITLE}" />
+  <meta name="twitter:description" content="${DESCRIPTION}" />
+  <meta name="twitter:image" content="https://suuji-survival.vercel.app/og-image.png" />`;
+  html = html.replace("</head>", ogTags + "\n</head>");
+  console.log("OGP tags injected");
+} else {
+  console.log("OGP tags already present, lang/title updated only");
+}
+
+fs.writeFileSync(filePath, html, "utf8");
+console.log("inject-ogp.js completed: lang=ja, title updated");

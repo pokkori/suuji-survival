@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { ThemeColors, ComboState, FeverState } from '../types';
 import { formatNumber } from '../utils/formatNumber';
 
@@ -9,11 +9,41 @@ interface Props {
   fever: FeverState;
   colors: ThemeColors;
   freezeMs: number;
+  dangerLevel: number; // 0=safe, 1=warning, 2=critical
 }
 
-export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeMs }) => {
+export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeMs, dangerLevel }) => {
+  const dangerPulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (dangerLevel >= 2) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dangerPulseAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
+          Animated.timing(dangerPulseAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
+        ])
+      ).start();
+    } else {
+      dangerPulseAnim.setValue(0);
+    }
+  }, [dangerLevel]);
+
   return (
     <View style={styles.container}>
+      {dangerLevel >= 2 && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: dangerPulseAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['rgba(255,34,68,0)', 'rgba(255,34,68,0.12)'],
+            }),
+            borderRadius: 0,
+            zIndex: 0,
+          }}
+        />
+      )}
       <View style={styles.topRow}>
         <Text style={[styles.scoreText, { color: colors.accentColor }]}>
           SCORE: {formatNumber(score)}
@@ -45,6 +75,16 @@ export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeM
       {freezeMs > 0 && (
         <Text style={styles.freezeText}>
           ❄️ FREEZE: {(freezeMs / 1000).toFixed(1)}s
+        </Text>
+      )}
+      {dangerLevel >= 2 && (
+        <Text style={styles.criticalText}>
+          💀 あと少し！ブロックを消せ！
+        </Text>
+      )}
+      {dangerLevel === 1 && (
+        <Text style={styles.warningText}>
+          ⚡ DANGER — ブロックが迫っている！
         </Text>
       )}
     </View>
@@ -94,6 +134,20 @@ const styles = StyleSheet.create({
   freezeText: {
     color: '#44CCFF',
     fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  warningText: {
+    color: '#FF8C00',
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  criticalText: {
+    color: '#FF2244',
+    fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
     marginTop: 2,

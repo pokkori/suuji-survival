@@ -5,6 +5,25 @@ import { ScoreState, ThemeColors } from '../types';
 import { formatNumber, formatTime } from '../utils/formatNumber';
 import { scoreToCoins } from '../engine/scoreCalc';
 import { STORAGE_KEYS } from '../constants/storage';
+import { RankBadgeSVG } from './RankBadgeSVG';
+
+function getWeeklyKey(): string {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
+}
+
+function getSharePercentile(score: number): string {
+  if (score >= 20000) return "上位1%相当";
+  if (score >= 15000) return "上位3%相当";
+  if (score >= 10000) return "上位8%相当";
+  if (score >= 7000) return "上位15%相当";
+  if (score >= 4000) return "上位30%相当";
+  if (score >= 2000) return "上位50%相当";
+  if (score >= 800) return "上位70%相当";
+  return "上位90%相当";
+}
 
 const COIN_REVIVE_COST = 500;
 
@@ -75,6 +94,17 @@ export const GameOverOverlay: React.FC<Props> = ({
       } catch {
         // silently fail
       }
+
+      // 週次チャレンジ進捗更新
+      (async () => {
+        const weekKey = getWeeklyKey();
+        const storageKey = `@ns:weekly_challenge_${weekKey}`;
+        const raw = await AsyncStorage.getItem(storageKey);
+        const weekly = raw ? JSON.parse(raw) : { totalScore: 0, gameCount: 0 };
+        weekly.totalScore += (score.current ?? 0);
+        weekly.gameCount += 1;
+        await AsyncStorage.setItem(storageKey, JSON.stringify(weekly));
+      })();
     })();
   }, []);
 
@@ -88,31 +118,72 @@ export const GameOverOverlay: React.FC<Props> = ({
           {formatNumber(score.current)}
         </Text>
         {isNewBest && (
-          <Text style={styles.newBest}>🏆 NEW BEST!</Text>
+          <Text style={styles.newBest}>NEW BEST!</Text>
         )}
-        <View style={styles.rankRow}>
-          <Text style={[styles.rankLabelText, { color: colors.accentColor }]}>
-            RANK
-          </Text>
-          <Text style={[styles.rankValue, { color: colors.accentColor }]}>
-            {rankLabel}
-          </Text>
+        {!isNewBest && personalBest > 0 && (
+          <View style={styles.bestCompareRow}>
+            <Text style={[styles.bestCompareLabel, { color: colors.cellTextColor }]}>
+              ベスト比
+            </Text>
+            <View style={styles.bestBarTrack}>
+              <View
+                style={[
+                  styles.bestBarFill,
+                  {
+                    width: `${Math.min(100, Math.round((score.current / personalBest) * 100))}%`,
+                    backgroundColor: score.current >= personalBest * 0.9 ? '#00FF88' : colors.accentColor,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={[styles.bestComparePercent, { color: colors.cellTextColor }]}>
+              {Math.round((score.current / personalBest) * 100)}%
+            </Text>
+          </View>
+        )}
+        <View style={{ alignItems: "center", marginVertical: 8 }}>
+          <RankBadgeSVG rank={rankLabel} size={72} />
         </View>
-        {toNext !== null && (
-          <Text style={[styles.toNextText, { color: colors.cellTextColor }]}>
-            あと{toNext.toLocaleString()}点で{
-              (() => {
-                const order = ['D','C','B','B+','A','A+','S','S+'];
-                const next = ['C','B','B+','A','A+','S','S+','S+'];
-                const idx = order.indexOf(rankLabel);
-                return idx >= 0 ? next[idx] : 'S+';
-              })()
-            }ランク昇格！
+        <Text style={{ color: "#FFD700", fontSize: 14, fontWeight: "bold", textAlign: "center", marginTop: 4 }}>
+          {getSharePercentile(score.current)}
+        </Text>
+        <TouchableOpacity
+          style={{ marginTop: 8, padding: 10, backgroundColor: "rgba(255,107,53,0.2)", borderRadius: 10 }}
+          onPress={onShare}
+        >
+          <Text style={{ color: "#FF6B35", fontWeight: "bold", textAlign: "center" }}>
+            この結果をシェアする
           </Text>
+        </TouchableOpacity>
+        {toNext !== null && (
+          <View style={{
+            backgroundColor: 'rgba(0,255,170,0.12)',
+            borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+            marginBottom: 12, width: '100%', alignItems: 'center',
+          }}>
+            <Text style={{ color: colors.accentColor, fontSize: 13, fontWeight: 'bold' }}>
+              次の目標
+            </Text>
+            <Text style={{ color: colors.cellTextColor, fontSize: 14, marginTop: 2 }}>
+              あと{toNext.toLocaleString()}点で{
+                (() => {
+                  const order = ['D','C','B','B+','A','A+','S','S+'];
+                  const next = ['C','B','B+','A','A+','S','S+','S+'];
+                  const idx = order.indexOf(rankLabel);
+                  return idx >= 0 ? next[idx] : 'S+';
+                })()
+              }ランク昇格！
+            </Text>
+            {(score.maxChain ?? 0) < 5 && (
+              <Text style={{ color: colors.cellTextColor, fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                5コンボを繋げるとスコアが跳ね上がります
+              </Text>
+            )}
+          </View>
         )}
 
         {streakDays >= 2 && (
-          <Text style={styles.streakBadge}>🔥 {streakDays}日連続プレイ！</Text>
+          <Text style={styles.streakBadge}>連続 {streakDays}日目!</Text>
         )}
 
         <View style={styles.statsRow}>
@@ -137,7 +208,7 @@ export const GameOverOverlay: React.FC<Props> = ({
         </View>
 
         <Text style={[styles.coinsEarned, { color: '#FFD700' }]}>
-          +{earnedCoins} 💰
+          +{earnedCoins} COIN
         </Text>
 
         <TouchableOpacity
@@ -158,7 +229,7 @@ export const GameOverOverlay: React.FC<Props> = ({
               }
             }}
           >
-            <Text style={styles.buttonText}>🪙 {COIN_REVIVE_COST}コインで復活！</Text>
+            <Text style={styles.buttonText}>{COIN_REVIVE_COST}コインで復活！</Text>
           </TouchableOpacity>
         )}
 
@@ -170,8 +241,8 @@ export const GameOverOverlay: React.FC<Props> = ({
         >
           <Text style={styles.buttonText}>
             {streakDays >= 2
-              ? `📤 ${streakDays}日連続をシェア！`
-              : '📤 結果をシェア（友達を招待）'}
+              ? `${streakDays}日連続をシェア！`
+              : '結果をシェア（友達を招待）'}
           </Text>
         </TouchableOpacity>
 
@@ -180,7 +251,7 @@ export const GameOverOverlay: React.FC<Props> = ({
           onPress={onHome}
         >
           <Text style={[styles.buttonOutlineText, { color: colors.accentColor }]}>
-            🏠 タイトルへ
+            タイトルへ
           </Text>
         </TouchableOpacity>
       </View>
@@ -285,5 +356,20 @@ const styles = StyleSheet.create({
   },
   toNextText: {
     fontSize: 13, opacity: 0.8, marginBottom: 8, textAlign: 'center',
+  },
+  bestCompareRow: {
+    flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 8, gap: 8,
+  },
+  bestCompareLabel: {
+    fontSize: 12, opacity: 0.7, width: 44,
+  },
+  bestBarTrack: {
+    flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 3, overflow: 'hidden',
+  },
+  bestBarFill: {
+    height: 6, borderRadius: 3,
+  },
+  bestComparePercent: {
+    fontSize: 12, width: 36, textAlign: 'right', opacity: 0.8,
   },
 });

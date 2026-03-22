@@ -258,6 +258,7 @@ export interface RankingEntry {
   score: number;
   date: string;
   maxCombo: number;
+  maxChainLevel?: number;
 }
 
 export interface ScoreHistoryEntry {

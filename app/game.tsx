@@ -54,7 +54,8 @@ interface ShockwaveInstance {
 
 export default function GameScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ dailySeed?: string }>();
+  const params = useLocalSearchParams<{ dailySeed?: string; mode?: string }>();
+  const isTimeAttack = params.mode === 'timeattack';
   const dailySeed = params.dailySeed ? Number(params.dailySeed) : undefined;
   const { colors } = useTheme();
   const storage = useStorage();
@@ -100,7 +101,7 @@ export default function GameScreen() {
     revive,
     revivalUsed,
     saveGameResult,
-  } = useGameEngine(dailySeed);
+  } = useGameEngine(dailySeed, isTimeAttack ? 60000 : undefined);
 
   // Load settings and apply to sound/haptics modules
   useEffect(() => {
@@ -132,8 +133,9 @@ export default function GameScreen() {
 
   useEffect(() => {
     setPrevBest(gameState.score.best);
-    startGame();
     storage.getNumber(STORAGE_KEYS.COINS, 0).then(c => setCurrentCoins(c));
+    // 常に即時開始（チュートリアルは上にオーバーレイ表示）
+    startGame();
   }, []);
 
   // Haptics + sound feedback for game events
@@ -333,7 +335,8 @@ export default function GameScreen() {
   const handleDismissTutorial = useCallback(async () => {
     setShowTutorial(false);
     await storage.setString(STORAGE_KEYS.TUTORIAL_SEEN, '1');
-  }, [storage]);
+    startGame(); // チュートリアル完了後にゲーム開始
+  }, [storage, startGame]);
 
   const handleRestart = useCallback(() => {
     gameOverSavedRef.current = false;
@@ -394,6 +397,17 @@ export default function GameScreen() {
     return rows.join('\n');
   }, [gameState.clearedCellHistory]);
 
+  function getSharePercentile(score: number): string {
+    if (score >= 20000) return '上位1%相当';
+    if (score >= 15000) return '上位3%相当';
+    if (score >= 10000) return '上位8%相当';
+    if (score >= 7000)  return '上位15%相当';
+    if (score >= 4000)  return '上位30%相当';
+    if (score >= 2000)  return '上位50%相当';
+    if (score >= 800)   return '上位70%相当';
+    return '上位90%相当';
+  }
+
   const generateShareText = useCallback((
     score: number,
     maxChain: number,
@@ -403,17 +417,18 @@ export default function GameScreen() {
     rankLabel: string,
   ): string => {
     const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
+    const percentile = getSharePercentile(score);
     let challengeComment: string;
     if (isNewRecord) {
-      challengeComment = '🏆 これは俺の新記録！あなたも挑戦して！';
+      challengeComment = `🏆 これは俺の新記録！${percentile}に到達！あなたも挑戦して！`;
     } else if (score > 5000) {
-      challengeComment = '📊 ベスト超えを目指せ！あなたは？';
+      challengeComment = `📊 ${percentile}に到達！ベスト超えを目指せ！あなたは？`;
     } else {
-      challengeComment = '👆 隣の数字をなぞって合計10！簡単そうで難しい😅';
+      challengeComment = `👆 隣の数字をなぞって合計10！簡単そうで難しい😅 あなたは${percentile}を超えられる？`;
     }
     return [
       `${recordMark}数字サバイバル`,
-      `スコア: ${score.toLocaleString()} [${rankLabel}ランク]`,
+      `スコア: ${score.toLocaleString()} [${rankLabel}ランク] ${percentile}`,
       `最大チェーン: ${maxChain}連鎖（${maxChainLevel}段階カスケード）`,
       challengeComment,
       '',
@@ -495,6 +510,18 @@ export default function GameScreen() {
       {/* Spotlight overlay for 3+ chain cascade */}
       <Animated.View style={[styles.spotlightOverlay, spotlightStyle]} pointerEvents="none" />
 
+      {/* Time attack countdown */}
+      {isTimeAttack && gameState.phase !== 'gameover' && (
+        <View style={styles.timeAttackBar}>
+          <Text style={[
+            styles.timeAttackText,
+            { color: gameState.elapsedMs > 45000 ? '#FF2244' : '#FF4500' }
+          ]}>
+            TIME {Math.max(0, Math.ceil((60000 - (gameState.elapsedMs ?? 0)) / 1000))}
+          </Text>
+        </View>
+      )}
+
       {/* Score bar */}
       <ScoreBar
         score={gameState.score.current}
@@ -502,6 +529,18 @@ export default function GameScreen() {
         fever={gameState.fever}
         colors={colors}
         freezeMs={gameState.freezeRemainingMs}
+        dangerLevel={(() => {
+          let filledRows = 0;
+          for (let r = 0; r < ROWS; r++) {
+            if (gameState.grid[r].some(cell => cell.content.type !== 'empty')) {
+              filledRows = ROWS - r;
+              break;
+            }
+          }
+          if (filledRows >= gameState.difficulty.warningRowThreshold + 1) return 2;
+          if (filledRows >= gameState.difficulty.warningRowThreshold) return 1;
+          return 0;
+        })()}
       />
 
       {/* Next queue */}
@@ -604,7 +643,7 @@ export default function GameScreen() {
           onPress={() => { handleShare(); setShowMidShareHint(false); }}
         >
           <Text style={{ color: "#FFF", fontWeight: "bold" }}>
-            🔥 チェーン×{gameState.maxChainLevel}！シェアする？
+            チェーン×{gameState.maxChainLevel}！シェアする？
           </Text>
         </Pressable>
       )}
@@ -718,6 +757,14 @@ const styles = StyleSheet.create({
   },
   quitText: {
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  timeAttackBar: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  timeAttackText: {
+    fontSize: 24,
     fontWeight: 'bold',
   },
 });

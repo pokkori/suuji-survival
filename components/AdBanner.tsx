@@ -1,32 +1,37 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 
-// AdMob is only available on native platforms
-// On web, this component renders nothing
-export const AdBanner: React.FC = () => null;
+export const AdBanner: React.FC = () => {
+  if (Platform.OS !== 'web') {
+    return null;
+  }
 
-// Note: For native builds, replace this file with the full implementation:
-// import React from 'react';
-// import { Platform, View } from 'react-native';
-// export const AdBanner: React.FC = () => {
-//   if (Platform.OS === 'web') return null;
-//   try {
-//     const { BannerAd, BannerAdSize, TestIds } = require('react-native-google-mobile-ads');
-//     const BANNER_ID = Platform.select({
-//       ios: TestIds.BANNER,
-//       android: TestIds.BANNER,
-//       default: TestIds.BANNER,
-//     });
-//     return (
-//       <View style={{ alignItems: 'center' }}>
-//         <BannerAd
-//           unitId={BANNER_ID!}
-//           size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-//           requestOptions={{ requestNonPersonalizedAdsOnly: true }}
-//         />
-//       </View>
-//     );
-//   } catch {
-//     return null;
-//   }
-// };
+  return (
+    <TouchableOpacity
+      style={styles.webBanner}
+      onPress={() => Linking.openURL('https://suuji-survival.vercel.app')}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.webBannerText}>
+        📱 数字サバイバル — 友達に紹介してスコアを競おう！
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  webBanner: {
+    backgroundColor: 'rgba(0,255,170,0.08)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,255,170,0.2)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  webBannerText: {
+    color: 'rgba(0,255,170,0.75)',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});

@@ -63,7 +63,7 @@ function findGroupsFromCell(
   }
 
   if (currentSum > 10) return;
-  if (path.length >= 8) return; // Limit search depth for performance
+  if (path.length >= 10) return; // Limit search depth for performance
 
   // Get adjacent positions
   const adjacentOffsets = [
