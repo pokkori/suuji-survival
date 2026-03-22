@@ -1,5 +1,6 @@
 import { Grid, Position, SpecialBlockResult, SpecialBlockType } from '../types';
 import { ADJACENT_OFFSETS, isInBounds } from './matchLogic';
+import { COLS } from '../constants/grid';
 
 export function executeBomb(grid: Grid, position: Position): SpecialBlockResult {
   const cleared: Position[] = [];
@@ -29,7 +30,12 @@ export function executeSpecialBlock(
     case 'bomb': return executeBomb(grid, position);
     case 'freeze': return executeFreeze();
     case 'double': return executeDouble();
-    case 'wild': return { clearedPositions: [], scoreBonus: 0 };
+    case 'wild': {
+      // ワイルドブロックが含まれる行を全消し
+      const clearedPositions: Position[] = Array.from({ length: COLS }, (_, col) => ({ row: position.row, col }))
+        .filter(pos => isInBounds(pos) && grid[pos.row][pos.col].content.type !== 'empty');
+      return { clearedPositions, scoreBonus: 30 };
+    }
   }
 }
 

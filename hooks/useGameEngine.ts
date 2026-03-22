@@ -490,7 +490,7 @@ export function useGameEngine(dailySeed?: number) {
         clearedCellHistory,
         lastClearEvent,
         chainLevel: willCascade ? 1 : 0,
-        maxChainLevel: 1,
+        maxChainLevel: willCascade ? Math.max(prev.maxChainLevel, 1) : prev.maxChainLevel,
         lastChainEvent: null,
       };
     });

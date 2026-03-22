@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
@@ -15,6 +15,7 @@ export default function TitleScreen() {
   const storage = useStorage();
   const [bestScore, setBestScore] = useState(0);
   const [coins, setCoins] = useState(0);
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     (async () => {
@@ -23,6 +24,15 @@ export default function TitleScreen() {
       const c = await storage.getNumber(STORAGE_KEYS.COINS, 0);
       setCoins(c);
     })();
+  }, []);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: -8, duration: 1500, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
   return (
@@ -99,8 +109,10 @@ export default function TitleScreen() {
 
         {/* Bottom icons */}
         <View style={styles.iconRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/shop')}>
-            <Text style={styles.iconEmoji}>🎨</Text>
+          <TouchableOpacity style={[styles.iconButton, { opacity: 0.55 }]} onPress={() => router.push('/shop')}>
+            <Animated.View style={{ transform: [{ translateY: floatAnim }] }}>
+              <Text style={styles.iconEmoji}>🎨</Text>
+            </Animated.View>
             <Text style={[styles.iconLabel, { color: colors.cellTextColor }]}>ショップ</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/settings')}>

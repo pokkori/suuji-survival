@@ -58,6 +58,7 @@ export default function GameScreen() {
   const { colors } = useTheme();
   const storage = useStorage();
   const [prevBest, setPrevBest] = useState(0);
+  const [currentCoins, setCurrentCoins] = useState(0);
   const gameOverSavedRef = useRef(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const prevPhaseRef = useRef<string>('idle');
@@ -129,6 +130,7 @@ export default function GameScreen() {
   useEffect(() => {
     setPrevBest(gameState.score.best);
     startGame();
+    storage.getNumber(STORAGE_KEYS.COINS, 0).then(c => setCurrentCoins(c));
   }, []);
 
   // Haptics + sound feedback for game events
@@ -331,6 +333,14 @@ export default function GameScreen() {
   const handleRevive = useCallback(() => {
     revive();
   }, [revive]);
+
+  const handleCoinRevive = useCallback(async () => {
+    const coins = await storage.getNumber(STORAGE_KEYS.COINS, 0);
+    if (coins < 500) return;
+    await storage.setNumber(STORAGE_KEYS.COINS, coins - 500);
+    setCurrentCoins(coins - 500);
+    revive();
+  }, [revive, storage]);
 
   const handleSwipeEndWithHaptic = useCallback(() => {
     // Resume AudioContext on first user gesture (required by browsers)
@@ -590,6 +600,8 @@ export default function GameScreen() {
           canRevive={!revivalUsed}
           isNewBest={isNewBest}
           dailyStreak={dailyStreakRef.current}
+          currentCoins={currentCoins}
+          onCoinRevive={handleCoinRevive}
         />
       )}
     </SafeAreaView>
@@ -638,8 +650,8 @@ const styles = StyleSheet.create({
   },
   pauseButton: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
+    top: 16,
+    right: 16,
     width: 48,
     height: 48,
     borderRadius: 24,

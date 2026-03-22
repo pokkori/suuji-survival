@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScoreState, ThemeColors } from '../types';
 import { formatNumber, formatTime } from '../utils/formatNumber';
 import { scoreToCoins } from '../engine/scoreCalc';
 import { STORAGE_KEYS } from '../constants/storage';
+
+const COIN_REVIVE_COST = 500;
 
 interface Props {
   score: ScoreState;
@@ -17,10 +19,13 @@ interface Props {
   canRevive: boolean;
   isNewBest: boolean;
   dailyStreak?: number;
+  currentCoins: number;
+  onCoinRevive: () => void;
 }
 
 export const GameOverOverlay: React.FC<Props> = ({
   score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest, dailyStreak,
+  currentCoins, onCoinRevive,
 }) => {
   const earnedCoins = scoreToCoins(score.current);
   const [streakDays, setStreakDays] = useState(0);
@@ -107,10 +112,16 @@ export const GameOverOverlay: React.FC<Props> = ({
 
         {canRevive && (
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: '#44CCFF' }]}
-            onPress={onRevive}
+            style={[styles.button, { backgroundColor: currentCoins >= COIN_REVIVE_COST ? '#FFD700' : 'rgba(255,215,0,0.4)' }]}
+            onPress={() => {
+              if (currentCoins >= COIN_REVIVE_COST) {
+                onCoinRevive();
+              } else {
+                Alert.alert('コインが足りません', `復活には${COIN_REVIVE_COST}コイン必要です。\n現在: ${currentCoins}コイン`);
+              }
+            }}
           >
-            <Text style={styles.buttonText}>📺 広告で復活</Text>
+            <Text style={styles.buttonText}>🪙 {COIN_REVIVE_COST}コインで復活！</Text>
           </TouchableOpacity>
         )}
 
