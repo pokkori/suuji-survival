@@ -629,6 +629,7 @@ export default function GameScreen() {
           grid={gameState.grid}
           colors={colors}
           warningRowThreshold={gameState.difficulty.warningRowThreshold}
+          comboCount={gameState.combo.count}
           onSwipeStart={handleSwipeStartWithAudio}
           onSwipeMove={handleSwipeMove}
           onSwipeEnd={handleSwipeEndWithHaptic}

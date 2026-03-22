@@ -8,6 +8,7 @@ interface Props {
   grid: GridType;
   colors: ThemeColors;
   warningRowThreshold: number;
+  comboCount?: number;
   onSwipeStart: (pos: Position) => void;
   onSwipeMove: (pos: Position) => void;
   onSwipeEnd: () => void;
@@ -18,6 +19,7 @@ export const GridView: React.FC<Props> = ({
   grid,
   colors,
   warningRowThreshold,
+  comboCount = 0,
   onSwipeStart,
   onSwipeMove,
   onSwipeEnd,
@@ -82,6 +84,25 @@ export const GridView: React.FC<Props> = ({
     return ROWS;
   })();
 
+  // Compute combo neighbor cells (adjacent to selected cells, active during combo)
+  const comboNeighborSet = React.useMemo(() => {
+    const set = new Set<string>();
+    if (comboCount < 2) return set;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (grid[r][c].isSelected) {
+          [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr, dc]) => {
+            const nr = r + dr; const nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !grid[nr][nc].isSelected) {
+              set.add(`${nr}-${nc}`);
+            }
+          });
+        }
+      }
+    }
+    return set;
+  }, [grid, comboCount]);
+
   return (
     <View
       style={[styles.grid, { backgroundColor: colors.gridBackground }]}
@@ -95,6 +116,7 @@ export const GridView: React.FC<Props> = ({
               cell={cell}
               colors={colors}
               isDanger={rowIndex <= 1 && cell.content.type !== 'empty'}
+              isComboNeighbor={comboNeighborSet.has(`${rowIndex}-${colIndex}`)}
             />
           ))}
         </View>
