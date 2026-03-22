@@ -236,9 +236,47 @@ export default function DailyScreen() {
         <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
           ── 連続達成 ──
         </Text>
-        <Text style={[styles.streakText, { color: colors.accentColor }]}>
-          {streak}日連続
-        </Text>
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <Text style={[styles.streakText, { color: colors.accentColor }]}>
+            {streak}日連続
+          </Text>
+          {streak === 30 && (
+            <View style={{ backgroundColor: '#ef4444', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, marginTop: 6, borderWidth: 2, borderColor: '#fca5a5' }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>
+                1ヶ月連続！チャンピオン！
+              </Text>
+            </View>
+          )}
+          {streak === 14 && (
+            <View style={{ backgroundColor: '#a855f7', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, marginTop: 6, borderWidth: 2, borderColor: '#d8b4fe' }}>
+              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>
+                2週間連続！すごい！
+              </Text>
+            </View>
+          )}
+          {streak === 7 && (
+            <View style={{ backgroundColor: '#FFD700', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, marginTop: 6 }}>
+              <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 16, textAlign: 'center' }}>
+                7日達成！ウィークリーマスター！
+              </Text>
+            </View>
+          )}
+          {streak > 0 && streak < 7 && (
+            <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+              あと{7 - streak}日で7日達成！
+            </Text>
+          )}
+          {streak > 7 && streak < 14 && (
+            <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+              あと{14 - streak}日で2週間達成！
+            </Text>
+          )}
+          {streak > 14 && streak < 30 && (
+            <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+              あと{30 - streak}日で1ヶ月達成！
+            </Text>
+          )}
+        </View>
 
         <Text style={[styles.sectionTitle, { color: colors.cellTextColor }]}>
           ── 過去14日間 ──
