@@ -18,7 +18,7 @@ if (html.includes('og:image')) {
 
 const ogpTags = `<meta property="og:type" content="website" />
 <meta property="og:title" content="数字サバイバル - スワイプで合計10を作る数字パズル" />
-<meta property="og:description" content="隣接セルをスワイプして合計10を作ろう！カスケード連鎖・フィーバーモード・デイリーチャレンジ搭載。無料プレイ。" />
+<meta property="og:description" content="隣接セルをなぞって合計10を作る無料数字パズル！カスケード8連鎖・フィーバーモード・デイリーチャレンジ搭載。スコアをシェアして友達に挑戦しよう。" />
 <meta property="og:url" content="https://suuji-survival.vercel.app" />
 <meta property="og:image" content="https://suuji-survival.vercel.app/og-image.png" />
 <meta property="og:image:width" content="1200" />

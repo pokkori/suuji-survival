@@ -27,13 +27,18 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "title": "数字サバイバル - スワイプで10を作る数字パズル",
-      "description": "落ちてくる数字をスワイプして合計10に！3段カスケードで爆発スコア。フィーバーモードで高得点を狙え。",
+      "title": "数字サバイバル - 隣の数字をなぞって合計10！無料の数字パズルゲーム",
+      "description": "隣接セルをスワイプして合計10を作ろう！カスケード8連鎖・フィーバーモード・デイリーチャレンジ搭載。スコアをWordleグリッドでシェア。ブラウザで今すぐ無料プレイ。",
       "themeColor": "#1a1a3e"
     },
+    "keywords": ["数字サバイバル", "数字パズル", "スワイプゲーム", "NumberSurvivor", "数字ゲーム", "数字消しゲーム", "ナンバーパズル", "10作りゲーム", "脳トレゲーム"],
     "plugins": [
       "expo-router",
-      "expo-sharing"
+      "expo-sharing",
+      ["react-native-google-mobile-ads", {
+        "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+        "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+      }]
     ]
   }
 }

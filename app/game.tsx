@@ -31,6 +31,7 @@ import { playClearSound, playComboSound, playFeverSound, playGameOverSound, play
 import { STORAGE_KEYS } from '../constants/storage';
 import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS } from '../constants/grid';
+import { AdBanner } from '../components/AdBanner';
 
 // Unique ID counter for particle effects
 let particleIdCounter = 0;
@@ -399,6 +400,7 @@ export default function GameScreen() {
     maxChainLevel: number,
     isNewRecord: boolean,
     wordleGrid: string,
+    rankLabel: string,
   ): string => {
     const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
     let challengeComment: string;
@@ -411,7 +413,7 @@ export default function GameScreen() {
     }
     return [
       `${recordMark}数字サバイバル`,
-      `スコア: ${score.toLocaleString()}`,
+      `スコア: ${score.toLocaleString()} [${rankLabel}ランク]`,
       `最大チェーン: ${maxChain}連鎖（${maxChainLevel}段階カスケード）`,
       challengeComment,
       '',
@@ -426,8 +428,10 @@ export default function GameScreen() {
       const score = gameState.score;
       const maxChainLevel = gameState.maxChainLevel > 1 ? gameState.maxChainLevel : 1;
       const isNewRecord = score.current > 0 && score.current >= score.best;
+      const s = score.current;
+      const rankLabelShare = s >= 20000 ? 'S+' : s >= 15000 ? 'S' : s >= 10000 ? 'A+' : s >= 7000 ? 'A' : s >= 4000 ? 'B+' : s >= 2000 ? 'B' : s >= 800 ? 'C' : 'D';
       const wordleGrid = generateWordleGrid();
-      const baseText = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid);
+      const baseText = generateShareText(score.current, score.maxChain, maxChainLevel, isNewRecord, wordleGrid, rankLabelShare);
       const message = wordleGrid ? `${baseText}` : baseText;
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
         const dailyStreak = await storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0);
@@ -606,6 +610,7 @@ export default function GameScreen() {
       )}
 
       {/* Game over */}
+      <AdBanner />
       {gameState.phase === 'gameover' && (
         <GameOverOverlay
           score={gameState.score}
@@ -620,6 +625,7 @@ export default function GameScreen() {
           dailyStreak={dailyStreakRef.current}
           currentCoins={currentCoins}
           onCoinRevive={handleCoinRevive}
+          personalBest={prevBest}
         />
       )}
     </SafeAreaView>

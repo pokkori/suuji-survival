@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useStorage } from '../hooks/useStorage';
 import { STORAGE_KEYS } from '../constants/storage';
 import { formatNumber } from '../utils/formatNumber';
+import { AdBanner } from '../components/AdBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -157,6 +158,7 @@ export default function TitleScreen() {
             💰 {formatNumber(coins)}
           </Text>
         </View>
+        <AdBanner />
       </View>
     </SafeAreaView>
   );

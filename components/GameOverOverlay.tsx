@@ -21,13 +21,30 @@ interface Props {
   dailyStreak?: number;
   currentCoins: number;
   onCoinRevive: () => void;
+  personalBest: number;
 }
 
 export const GameOverOverlay: React.FC<Props> = ({
   score, elapsedMs, colors, onRestart, onRevive, onShare, onHome, canRevive, isNewBest, dailyStreak,
-  currentCoins, onCoinRevive,
+  currentCoins, onCoinRevive, personalBest,
 }) => {
   const earnedCoins = scoreToCoins(score.current);
+  const rankLabel: string = (() => {
+    const s = score.current;
+    if (s >= 20000) return 'S+';
+    if (s >= 15000) return 'S';
+    if (s >= 10000) return 'A+';
+    if (s >= 7000)  return 'A';
+    if (s >= 4000)  return 'B+';
+    if (s >= 2000)  return 'B';
+    if (s >= 800)   return 'C';
+    return 'D';
+  })();
+  const nextThresholds: Record<string, number> = {
+    'D': 800, 'C': 2000, 'B': 4000, 'B+': 7000, 'A': 10000, 'A+': 15000, 'S': 20000, 'S+': Infinity,
+  };
+  const nextTarget = nextThresholds[rankLabel];
+  const toNext = nextTarget === Infinity ? null : nextTarget - score.current;
   const [streakDays, setStreakDays] = useState(0);
 
   useEffect(() => {
@@ -72,6 +89,26 @@ export const GameOverOverlay: React.FC<Props> = ({
         </Text>
         {isNewBest && (
           <Text style={styles.newBest}>🏆 NEW BEST!</Text>
+        )}
+        <View style={styles.rankRow}>
+          <Text style={[styles.rankLabelText, { color: colors.accentColor }]}>
+            RANK
+          </Text>
+          <Text style={[styles.rankValue, { color: colors.accentColor }]}>
+            {rankLabel}
+          </Text>
+        </View>
+        {toNext !== null && (
+          <Text style={[styles.toNextText, { color: colors.cellTextColor }]}>
+            あと{toNext.toLocaleString()}点で{
+              (() => {
+                const order = ['D','C','B','B+','A','A+','S','S+'];
+                const next = ['C','B','B+','A','A+','S','S+','S+'];
+                const idx = order.indexOf(rankLabel);
+                return idx >= 0 ? next[idx] : 'S+';
+              })()
+            }ランク昇格！
+          </Text>
         )}
 
         {streakDays >= 2 && (
@@ -236,5 +273,17 @@ const styles = StyleSheet.create({
   buttonOutlineText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  rankRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4,
+  },
+  rankLabelText: {
+    fontSize: 14, opacity: 0.7, fontWeight: 'bold',
+  },
+  rankValue: {
+    fontSize: 36, fontWeight: 'bold',
+  },
+  toNextText: {
+    fontSize: 13, opacity: 0.8, marginBottom: 8, textAlign: 'center',
   },
 });
