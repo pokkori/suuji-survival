@@ -186,6 +186,12 @@ export const GameOverOverlay: React.FC<Props> = ({
           <Text style={styles.streakBadge}>連続 {streakDays}日目!</Text>
         )}
 
+        {streakDays > 0 && streakDays % 7 === 0 && (
+          <View style={{ backgroundColor: '#FFD700', borderRadius: 8, padding: 12, marginTop: 8, alignItems: 'center' }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#1a1a3e' }}>7日連続！ストリーク達成！</Text>
+          </View>
+        )}
+
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={[styles.statLabel, { color: colors.cellTextColor }]}>消去</Text>
@@ -212,15 +218,17 @@ export const GameOverOverlay: React.FC<Props> = ({
         </Text>
 
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.accentColor }]}
+          style={[styles.button, { backgroundColor: colors.accentColor, minHeight: 44 }]}
           onPress={onRestart}
+          accessibilityLabel="もう一度プレイする"
+          accessibilityRole="button"
         >
           <Text style={styles.buttonText}>▶ もう1回</Text>
         </TouchableOpacity>
 
         {canRevive && (
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: currentCoins >= COIN_REVIVE_COST ? '#FFD700' : 'rgba(255,215,0,0.4)' }]}
+            style={[styles.button, { backgroundColor: currentCoins >= COIN_REVIVE_COST ? '#FFD700' : 'rgba(255,215,0,0.4)', minHeight: 44 }]}
             onPress={() => {
               if (currentCoins >= COIN_REVIVE_COST) {
                 onCoinRevive();
@@ -228,10 +236,21 @@ export const GameOverOverlay: React.FC<Props> = ({
                 Alert.alert('コインが足りません', `復活には${COIN_REVIVE_COST}コイン必要です。\n現在: ${currentCoins}コイン`);
               }
             }}
+            accessibilityLabel="コインで復活する"
+            accessibilityRole="button"
           >
             <Text style={styles.buttonText}>{COIN_REVIVE_COST}コインで復活！</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={{ minHeight: 44, backgroundColor: '#4CAF50', borderRadius: 12, padding: 12, marginTop: 0, marginBottom: 8, alignItems: 'center', width: '100%' }}
+          accessibilityLabel="リワード広告を見て復活する"
+          accessibilityRole="button"
+          onPress={() => Alert.alert('まもなく実装', 'App Store配信後にリワード広告が利用可能になります')}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>リワード広告で復活</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, {

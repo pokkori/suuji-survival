@@ -8,6 +8,7 @@ import { STORAGE_KEYS } from '../constants/storage';
 import { formatNumber } from '../utils/formatNumber';
 import { AdBanner } from '../components/AdBanner';
 import { IconSVG } from '../components/IconButtonSVG';
+import { scheduleDailyReminderAsync } from '../utils/notifications';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ export default function TitleScreen() {
   const [bestScore, setBestScore] = useState(0);
   const [coins, setCoins] = useState(0);
   const [topScores, setTopScores] = useState<Array<{ score: number }>>([]);
+  const [endlessUnlocked, setEndlessUnlocked] = useState(false);
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -28,7 +30,13 @@ export default function TitleScreen() {
       setCoins(c);
       const rankData = await storage.getItem<Array<{ score: number; date: string }>>(STORAGE_KEYS.RANKING_ALL, []);
       setTopScores(rankData.slice(0, 3));
+      const endless = await storage.getString(STORAGE_KEYS.ENDLESS_UNLOCKED, '');
+      if (endless === 'true') setEndlessUnlocked(true);
     })();
+  }, []);
+
+  useEffect(() => {
+    scheduleDailyReminderAsync();
   }, []);
 
   useEffect(() => {
@@ -92,15 +100,19 @@ export default function TitleScreen() {
         {/* Main buttons */}
         <View style={styles.buttons}>
           <TouchableOpacity
-            style={[styles.mainButton, { backgroundColor: colors.accentColor }]}
+            style={[styles.mainButton, { backgroundColor: colors.accentColor, minHeight: 44 }]}
             onPress={() => router.push('/game')}
+            accessibilityLabel="ゲームをスタートする"
+            accessibilityRole="button"
           >
             <Text style={styles.mainButtonText}>▶ スタート</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.mainButton, { backgroundColor: '#FF4500', marginTop: 12 }]}
+            style={[styles.mainButton, { backgroundColor: '#FF4500', marginTop: 12, minHeight: 44 }]}
             onPress={() => router.push('/game?mode=timeattack' as any)}
+            accessibilityLabel="タイムアタック60秒モードをスタートする"
+            accessibilityRole="button"
           >
             <Text style={styles.mainButtonText}>タイムアタック 60秒</Text>
           </TouchableOpacity>
@@ -127,7 +139,7 @@ export default function TitleScreen() {
             style={[styles.secondaryButton, { borderColor: '#FF6B35', backgroundColor: 'rgba(255,107,53,0.1)', marginTop: 8 }]}
             activeOpacity={0.7}
             onPress={async () => {
-              const text = `【数字サバイバル】合計10を目指してスワイプするパズルゲーム！\nあなたのスコアは？チェーンでコンボを狙え🔥\nhttps://suuji-survival.vercel.app #数字サバイバル`;
+              const text = `【数字サバイバル】合計10を目指してスワイプするパズルゲーム！\nあなたのスコアは？チェーンでコンボを狙え\nhttps://suuji-survival.vercel.app #数字サバイバル`;
               if (typeof navigator !== 'undefined' && navigator.share) {
                 await navigator.share({ text });
               }
@@ -135,6 +147,22 @@ export default function TitleScreen() {
           >
             <Text style={[styles.secondaryButtonText, { color: '#FF6B35' }]}>
               友達に挑戦する
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.secondaryButton,
+              { borderColor: '#9B59B6', backgroundColor: 'rgba(155,89,182,0.1)', marginTop: 8, minHeight: 44 },
+              !endlessUnlocked && { opacity: 0.3 },
+            ]}
+            disabled={!endlessUnlocked}
+            onPress={() => router.push('/game?mode=endless' as any)}
+            accessibilityLabel="エンドレスモード"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.secondaryButtonText, { color: '#9B59B6' }]}>
+              エンドレスモード{endlessUnlocked ? '' : '（解放待ち）'}
             </Text>
           </TouchableOpacity>
         </View>

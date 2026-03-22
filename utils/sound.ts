@@ -128,116 +128,63 @@ export function playSpecialBlockSound() {
   playTone(1000, 80, 'square', 0.5, 600);
 }
 
-// ---- BGM control ----
-let bgmIntervalId: ReturnType<typeof setInterval> | null = null;
-let bgmGainNode: GainNode | null = null;
+// ---- BGM control (expo-av MP3 implementation) ----
+import { Audio } from 'expo-av';
+
+let _bgmNormal: Audio.Sound | null = null;
+let _bgmFever: Audio.Sound | null = null;
+let _currentMode: 'normal' | 'fever' | null = null;
 let bgmEnabled = true;
-let bgmVolume = 0.3;
+let bgmVolume = 0.5;
 
-// Am-G-F-E コード進行（Aマイナースケール）
-// メロディー: 8音×2小節ループ
-const MELODY_NOTES = [440, 494, 523, 494, 440, 392, 349, 392]; // A4-B4-C5-B4-A4-G4-F4-G4
-// ベース: Am-G-F-E ルート音（1小節=2拍）
-const BASS_NOTES   = [110, 98, 87.3, 82.4]; // A2-G2-F2-E2
-// コードパッド: Am-G-F-E ボイシング（3声）
-const CHORD_VOICINGS: [number, number, number][] = [
-  [220, 262, 330], // Am: A3-C4-E4
-  [196, 247, 294], // G:  G3-B3-D4
-  [175, 220, 262], // F:  F3-A3-C4
-  [165, 208, 247], // E:  E3-G#3-B3
-];
-
-function scheduleVoice(
-  ctx: AudioContext,
-  masterGain: GainNode,
-  freq: number,
-  startTime: number,
-  duration: number,
-  type: OscillatorType,
-  vol: number,
-) {
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, startTime);
-  g.gain.setValueAtTime(vol, startTime);
-  g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-  osc.connect(g);
-  g.connect(masterGain);
-  osc.start(startTime);
-  osc.stop(startTime + duration);
+export async function loadBGMAsync(): Promise<void> {
+  try {
+    const { sound: n } = await Audio.Sound.createAsync(
+      require('../assets/sounds/bgm_normal.mp3'),
+      { isLooping: true, volume: bgmVolume, shouldPlay: false }
+    );
+    const { sound: f } = await Audio.Sound.createAsync(
+      require('../assets/sounds/bgm_fever.mp3'),
+      { isLooping: true, volume: Math.min(1, bgmVolume * 1.3), shouldPlay: false }
+    );
+    _bgmNormal = n;
+    _bgmFever = f;
+  } catch (e) {
+    // MP3ファイル未配置時はスキップ（サイレント）
+  }
 }
 
-export function playBGM(bpm: number = 104): void {
-  const ctx = getAudioContext();
-  if (!ctx || !bgmEnabled) return;
-  stopBGM();
-
-  const gain = ctx.createGain();
-  gain.gain.value = bgmVolume;
-  gain.connect(ctx.destination);
-  bgmGainNode = gain;
-
-  const beatSec = 60 / bpm;        // 1拍の秒数
-  const chordBeats = 2;             // 1コードあたり2拍
-  const melodyBeats = 1;            // メロディーは1拍毎
-  let step = 0;
-
-  const tickBGM = () => {
-    if (!ctx || !bgmGainNode) return;
-    const now = ctx.currentTime;
-    const melodyIdx = step % MELODY_NOTES.length;
-    const chordIdx  = Math.floor(step / chordBeats) % CHORD_VOICINGS.length;
-    const bassIdx   = Math.floor(step / chordBeats) % BASS_NOTES.length;
-
-    // メロディー声部（triangle・中音量）
-    scheduleVoice(ctx, bgmGainNode, MELODY_NOTES[melodyIdx], now, beatSec * 0.85, 'triangle', bgmVolume * 0.4);
-
-    // コードパッド声部（sine・小音量・和音の変わり目のみ）
-    if (step % chordBeats === 0) {
-      const voicing = CHORD_VOICINGS[chordIdx];
-      for (const f of voicing) {
-        scheduleVoice(ctx, bgmGainNode, f, now, beatSec * chordBeats * 0.9, 'sine', bgmVolume * 0.15);
-      }
-      // ベース声部（sawtooth・低音）
-      scheduleVoice(ctx, bgmGainNode, BASS_NOTES[bassIdx], now, beatSec * chordBeats * 0.8, 'sawtooth', bgmVolume * 0.25);
-    }
-
-    // パーカッション声部（noise風: short square burst）
-    if (step % 2 === 0) {
-      // キック代わりの低音バースト
-      scheduleVoice(ctx, bgmGainNode, 60, now, 0.06, 'square', bgmVolume * 0.3);
-    } else {
-      // スネア代わりの高音バースト
-      scheduleVoice(ctx, bgmGainNode, 220, now, 0.04, 'square', bgmVolume * 0.1);
-    }
-
-    step++;
-  };
-
-  tickBGM();
-  bgmIntervalId = setInterval(tickBGM, (60 / bpm) * 1000);
+export async function playBGM(bpmOrMode: number | 'normal' | 'fever' = 'normal'): Promise<void> {
+  if (!bgmEnabled) return;
+  const mode = (bpmOrMode === 148 || bpmOrMode === 'fever') ? 'fever' : 'normal';
+  if (_currentMode === mode) return;
+  await stopBGM();
+  _currentMode = mode;
+  const sound = mode === 'fever' ? _bgmFever : _bgmNormal;
+  if (!sound) return;
+  try {
+    await sound.setPositionAsync(0);
+    await sound.playAsync();
+  } catch (e) {}
 }
 
-export function stopBGM(): void {
-  if (bgmIntervalId !== null) {
-    clearInterval(bgmIntervalId);
-    bgmIntervalId = null;
-  }
-  if (bgmGainNode) {
-    bgmGainNode.gain.value = 0;
-    bgmGainNode = null;
-  }
+export async function stopBGM(): Promise<void> {
+  _currentMode = null;
+  try { if (_bgmNormal) await _bgmNormal.stopAsync(); } catch (e) {}
+  try { if (_bgmFever) await _bgmFever.stopAsync(); } catch (e) {}
 }
 
 export function setBGMEnabled(enabled: boolean): void {
   bgmEnabled = enabled;
-  if (!enabled) stopBGM();
+  if (!enabled) { stopBGM(); }
 }
 
 export function setBGMVolume(vol: number): void {
-  bgmVolume = vol;
-  if (bgmGainNode) bgmGainNode.gain.value = vol;
+  bgmVolume = Math.max(0, Math.min(1, vol));
+  try {
+    if (_bgmNormal) { _bgmNormal.setVolumeAsync(bgmVolume).catch(() => {}); }
+    if (_bgmFever) { _bgmFever.setVolumeAsync(Math.min(1, bgmVolume * 1.3)).catch(() => {}); }
+  } catch (e) {}
 }
 
 /** Chain sound: pitch rises with chain level. C4→E4→G4→C5, 5+ = arpeggio fanfare */

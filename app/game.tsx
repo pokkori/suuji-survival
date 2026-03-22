@@ -27,7 +27,7 @@ import { ChainDisplay } from '../components/ChainDisplay';
 import { formatNumber } from '../utils/formatNumber';
 import { generateScoreCard } from '../utils/shareImage';
 import { hapticClear, hapticCombo, hapticComboHeavy, hapticFever, hapticSpecialBlock, hapticGameOver, setHapticsEnabled } from '../utils/haptics';
-import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, setBGMEnabled, setBGMVolume } from '../utils/sound';
+import { playClearSound, playComboSound, playFeverSound, playGameOverSound, playSpecialBlockSound, playChainSound, resumeAudioContext, setSEEnabled, setSEVolume, playBGM, stopBGM, setBGMEnabled, setBGMVolume, loadBGMAsync } from '../utils/sound';
 import { STORAGE_KEYS } from '../constants/storage';
 import { ClearEvent, ChainEvent, Position, UserSettings } from '../types';
 import { COLS, ROWS, CELL_SIZE, GRID_PADDING } from '../constants/grid';
@@ -89,6 +89,8 @@ export default function GameScreen() {
   const [showMidShareHint, setShowMidShareHint] = useState(false);
   const hasShownMidHint = useRef(false);
 
+  const [showEndlessBanner, setShowEndlessBanner] = useState(false);
+
   // Spotlight overlay for 3+ chain cascade
   const spotlightOpacity = useSharedValue(0);
 
@@ -135,6 +137,7 @@ export default function GameScreen() {
       setHapticsEnabled(saved.hapticsEnabled);
       setBGMEnabled(saved.bgmEnabled);
       setBGMVolume(saved.bgmVolume);
+      await loadBGMAsync();
     })();
   }, []);
 
@@ -293,6 +296,16 @@ export default function GameScreen() {
       hasShownMidHint.current = true;
       setShowMidShareHint(true);
       setTimeout(() => setShowMidShareHint(false), 3000);
+    }
+  }, [gameState.maxChainLevel]);
+
+  // Endless mode unlock banner when maxChainLevel reaches 8
+  useEffect(() => {
+    if (gameState.maxChainLevel >= 8) {
+      storage.setString(STORAGE_KEYS.ENDLESS_UNLOCKED, 'true').catch(() => {});
+      setShowEndlessBanner(true);
+      const t = setTimeout(() => setShowEndlessBanner(false), 2000);
+      return () => clearTimeout(t);
     }
   }, [gameState.maxChainLevel]);
 
@@ -472,15 +485,15 @@ export default function GameScreen() {
     wordleGrid: string,
     rankLabel: string,
   ): string => {
-    const recordMark = isNewRecord ? '🏆 NEW RECORD! ' : '';
+    const recordMark = isNewRecord ? 'NEW RECORD! ' : '';
     const percentile = getSharePercentile(score);
     let challengeComment: string;
     if (isNewRecord) {
-      challengeComment = `🏆 これは俺の新記録！${percentile}に到達！あなたも挑戦して！`;
+      challengeComment = `これは俺の新記録！${percentile}に到達！あなたも挑戦して！`;
     } else if (score > 5000) {
-      challengeComment = `📊 ${percentile}に到達！ベスト超えを目指せ！あなたは？`;
+      challengeComment = `${percentile}に到達！ベスト超えを目指せ！あなたは？`;
     } else {
-      challengeComment = `👆 隣の数字をなぞって合計10！簡単そうで難しい😅 あなたは${percentile}を超えられる？`;
+      challengeComment = `隣の数字をなぞって合計10！簡単そうで難しい あなたは${percentile}を超えられる？`;
     }
     return [
       `${recordMark}数字サバイバル`,
@@ -506,7 +519,7 @@ export default function GameScreen() {
       const message = wordleGrid ? `${baseText}` : baseText;
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
         const dailyStreak = await storage.getNumber(STORAGE_KEYS.DAILY_STREAK, 0);
-        const streakSuffix = dailyStreak >= 2 ? ` ${dailyStreak}日連続🔥` : '';
+        const streakSuffix = dailyStreak >= 2 ? ` ${dailyStreak}日連続` : '';
         const enhancedMessage = `数字サバイバル スコア: ${score.current.toLocaleString()}${streakSuffix}\n最大チェーン: ${score.maxChain} #数字サバイバル #数字ゲーム\nhttps://suuji-survival.vercel.app`;
         const blob = await generateScoreCard({
           score: score.current,
@@ -683,7 +696,12 @@ export default function GameScreen() {
 
       {/* Pause button */}
       {isPlaying && (
-        <TouchableOpacity style={styles.pauseButton} onPress={togglePause}>
+        <TouchableOpacity
+          style={styles.pauseButton}
+          onPress={togglePause}
+          accessibilityLabel="一時停止"
+          accessibilityRole="button"
+        >
           <Text style={styles.pauseText}>{gameState.isPaused ? '\u25B6' : '\u23F8'}</Text>
         </TouchableOpacity>
       )}
@@ -693,14 +711,18 @@ export default function GameScreen() {
         <View style={styles.pauseOverlay}>
           <Text style={[styles.pauseTitle, { color: colors.accentColor }]}>PAUSED</Text>
           <TouchableOpacity
-            style={[styles.resumeButton, { backgroundColor: colors.accentColor }]}
+            style={[styles.resumeButton, { backgroundColor: colors.accentColor, minHeight: 44 }]}
             onPress={togglePause}
+            accessibilityLabel="ゲームを再開する"
+            accessibilityRole="button"
           >
             <Text style={styles.resumeText}>{'\u25B6'} 再開</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.quitButton, { borderColor: colors.accentColor }]}
+            style={[styles.quitButton, { borderColor: colors.accentColor, minHeight: 44 }]}
             onPress={handleHome}
+            accessibilityLabel="タイトル画面へ戻る"
+            accessibilityRole="button"
           >
             <Text style={[styles.quitText, { color: colors.accentColor }]}>HOME タイトルへ</Text>
           </TouchableOpacity>
@@ -721,6 +743,13 @@ export default function GameScreen() {
             チェーン×{gameState.maxChainLevel}！シェアする？
           </Text>
         </Pressable>
+      )}
+
+      {/* Endless mode unlock banner */}
+      {showEndlessBanner && (
+        <View style={{ position: 'absolute', top: 60, alignSelf: 'center', backgroundColor: '#FF6B35', borderRadius: 16, paddingHorizontal: 24, paddingVertical: 12, zIndex: 100 }}>
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>エンドレスモード解放！</Text>
+        </View>
       )}
 
       {/* Game over */}

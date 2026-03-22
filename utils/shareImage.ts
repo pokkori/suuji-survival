@@ -47,8 +47,10 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
   // New record badge
   if (params.isNewRecord) {
     ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 32px sans-serif';
-    ctx.fillText('🏆 NEW RECORD!', W / 2, 140);
+    ctx.fillRect(W / 2 - 120, 115, 240, 40);
+    ctx.fillStyle = '#1a1a3e';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('NEW RECORD', W / 2, 140);
   }
 
   // Score value
@@ -66,15 +68,33 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
     statsY,
   );
 
-  // Wordle grid
+  // Wordle grid (color rect version, no emoji)
   if (params.wordleGrid) {
     const lines = params.wordleGrid.split('\n');
-    const emojiSize = 44;
+    const cellSize = 36;
+    const cellGap = 4;
+    const cols = lines[0] ? [...lines[0]].filter(ch => ch.trim().length > 0 || ch === '\u2B1C').length : 6;
+    // Count cells per line by splitting Unicode characters
+    const colCount = lines.reduce((max, l) => {
+      const chars = [...l];
+      return Math.max(max, chars.length);
+    }, 0) || 6;
+    const totalW = colCount * (cellSize + cellGap) - cellGap;
+    const gridStartX = W / 2 - totalW / 2;
     const gridStartY = statsY + 40;
-    ctx.font = `${emojiSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    lines.forEach((line, i) => {
-      ctx.fillText(line, W / 2, gridStartY + i * (emojiSize + 4));
+    const ROW_COLORS = ['#3BA55C', '#C9B458', '#E74C3C', '#3498DB', '#9B59B6', '#E67E22'];
+    lines.forEach((line, rowIdx) => {
+      const chars = [...line];
+      chars.forEach((ch, colIdx) => {
+        const x = gridStartX + colIdx * (cellSize + cellGap);
+        const y = gridStartY + rowIdx * (cellSize + cellGap);
+        if (ch === '\u2B1C' || ch === ' ') {
+          ctx.fillStyle = '#1a1a3e';
+        } else {
+          ctx.fillStyle = ROW_COLORS[(rowIdx + colIdx) % ROW_COLORS.length];
+        }
+        ctx.fillRect(x, y, cellSize, cellSize);
+      });
     });
   }
 
@@ -87,14 +107,14 @@ export async function generateScoreCard(params: ShareImageParams): Promise<Blob 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 26px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`🔥 ${params.dailyStreak}日連続達成!`, W / 2, H - 74);
+    ctx.fillText(`${params.dailyStreak}日連続達成!`, W / 2, H - 74);
   }
   if (params.personalBest !== undefined && params.score > 0) {
     const diff = params.score - params.personalBest;
     const pbText = diff > 0
-      ? `⬆️ 自己ベスト+${diff}点！`
+      ? `自己ベスト+${diff}点！`
       : diff === 0
-      ? `🎯 自己ベスト更新！`
+      ? `自己ベスト更新！`
       : `自己ベストまであと${Math.abs(diff)}点`;
     ctx.font = "bold 28px sans-serif";
     ctx.fillStyle = diff >= 0 ? "#00FF88" : "#FFFFFF88";

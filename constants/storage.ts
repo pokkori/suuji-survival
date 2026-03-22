@@ -24,4 +24,5 @@ export const STORAGE_KEYS = {
   TOTAL_SCORE: '@ns:total_score',
   TUTORIAL_SEEN: '@ns:tutorial_seen',
   WEEKLY_CHALLENGE: '@ns:weekly_challenge',
+  ENDLESS_UNLOCKED: '@numsurvival/endless_unlocked' as const,
 } as const;
