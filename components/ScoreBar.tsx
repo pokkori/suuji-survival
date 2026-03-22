@@ -48,11 +48,23 @@ export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeM
         <Text style={[styles.scoreText, { color: colors.accentColor }]}>
           SCORE: {formatNumber(score)}
         </Text>
-        {combo.count >= 2 && (
-          <Text style={[styles.comboText, { color: colors.comboTextColor }]}>
-            COMBO: x{combo.count}
-          </Text>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {combo.count >= 10 && (
+            <View style={{ backgroundColor: '#FF6B00', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>x3</Text>
+            </View>
+          )}
+          {combo.count >= 5 && combo.count < 10 && (
+            <View style={{ backgroundColor: '#CC8800', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: 'bold' }}>x2</Text>
+            </View>
+          )}
+          {combo.count >= 2 && (
+            <Text style={[styles.comboText, { color: colors.comboTextColor }]}>
+              COMBO: {combo.count}
+            </Text>
+          )}
+        </View>
       </View>
       <View style={styles.feverRow}>
         <View style={[styles.feverBarBg, { backgroundColor: colors.gridLine }]}>
