@@ -27,11 +27,13 @@ interface Props {
   cell: CellType;
   colors: ThemeColors;
   isDanger: boolean;
+  isComboNeighbor?: boolean;
 }
 
-export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger }) => {
+export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger, isComboNeighbor }) => {
   const { content, isSelected, isDestroying } = cell;
   const scale = useSharedValue(1);
+  const textScale = useSharedValue(1);
 
   useEffect(() => {
     if (isSelected) {
@@ -44,8 +46,21 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
     }
   }, [isSelected]);
 
+  useEffect(() => {
+    if (isComboNeighbor) {
+      textScale.value = withSequence(
+        withSpring(1.25, { damping: 5, stiffness: 400 }),
+        withTiming(1.0, { duration: 250 }),
+      );
+    }
+  }, [isComboNeighbor]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+
+  const textAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: textScale.value }],
   }));
 
   if (content.type === 'empty') {
@@ -111,6 +126,7 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
                     ? 32
                     : 28,
             },
+            textAnimatedStyle,
           ]}
         >
           {label}
