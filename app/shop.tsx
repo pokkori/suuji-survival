@@ -99,7 +99,7 @@ export default function ShopScreen() {
           <Text style={[styles.backText, { color: colors.accentColor }]}>← 戻る</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.cellTextColor }]}>ショップ</Text>
-        <Text style={[styles.coins, { color: '#FFD700' }]}>💰 {formatNumber(coins)}</Text>
+        <Text style={[styles.coins, { color: '#FFD700' }]}>COIN {formatNumber(coins)}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -127,7 +127,7 @@ export default function ShopScreen() {
                 </View>
                 <Text style={[styles.themeName, { color: theme.colors.cellTextColor }]}>{theme.name}</Text>
                 {isCurrent ? (
-                  <Text style={[styles.themePrice, { color: '#00FF88' }]}>✅ 使用中</Text>
+                  <Text style={[styles.themePrice, { color: '#00FF88' }]}>OK 使用中</Text>
                 ) : isUnlocked ? (
                   <TouchableOpacity
                     style={styles.themeActionBtn}
@@ -140,7 +140,7 @@ export default function ShopScreen() {
                     style={[styles.themeActionBtn, { backgroundColor: '#FFD700' }]}
                     onPress={() => handlePurchaseTheme(theme.id)}
                   >
-                    <Text style={[styles.themeActionBtnText, { color: '#000' }]}>{theme.price}💰 購入</Text>
+                    <Text style={[styles.themeActionBtnText, { color: '#000' }]}>{theme.price} COIN 購入</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -158,7 +158,7 @@ export default function ShopScreen() {
           onPress={() => Alert.alert('準備中', 'ストアリリース後に購入できるようになります')}
         >
           <View>
-            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🚫 広告除去</Text>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>広告除去</Text>
             <Text style={styles.comingSoon}>ストアリリース後に有効になります</Text>
           </View>
           <Text style={[styles.premiumPrice, { color: colors.accentColor, opacity: 0.5 }]}>¥480</Text>
@@ -170,7 +170,7 @@ export default function ShopScreen() {
           onPress={() => Alert.alert('コイン購入', '500コインを¥160で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
         >
           <View>
-            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 500コイン</Text>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>500コイン</Text>
             <Text style={styles.comingSoon}>もうすぐ購入可能</Text>
           </View>
           <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥160</Text>
@@ -182,7 +182,7 @@ export default function ShopScreen() {
           onPress={() => Alert.alert('コイン購入', '1500コインを¥400で購入しますか？（ストアリリース後に有効）', [{ text: 'キャンセル', style: 'cancel' }])}
         >
           <View>
-            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>🪙 1500コイン</Text>
+            <Text style={[styles.premiumText, { color: colors.cellTextColor }]}>1500コイン</Text>
             <Text style={styles.comingSoon}>もうすぐ購入可能</Text>
           </View>
           <Text style={[styles.premiumPrice, { color: colors.accentColor }]}>¥400</Text>

@@ -142,7 +142,7 @@ function AnimatedDemo({ colors }: { colors: ThemeColors }) {
         })}
       </View>
       <Animated.Text style={[demoStyles.label, { opacity: labelOpacity, color: colors.accentColor }]}>
-        3+4+3=10 ✅
+        3+4+3=10 OK
       </Animated.Text>
     </View>
   );

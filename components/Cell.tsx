@@ -12,7 +12,8 @@ import Animated, {
 import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { Cell as CellType, ThemeColors } from '../types';
 import { CELL_SIZE } from '../constants/grid';
-import { SPECIAL_BLOCK_ICONS, SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
+import { SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
+import { SpecialBlockIconSVG } from './SpecialBlockIconSVG';
 
 function lightenColor(hex: string, amount: number): string {
   const clean = hex.replace('#', '');
@@ -59,7 +60,7 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
     label = String(content.value);
   } else {
     bgColor = SPECIAL_BLOCK_COLORS[content.special];
-    label = SPECIAL_BLOCK_ICONS[content.special];
+    label = content.special === 'double' ? '×2' : '';
   }
 
   const isHexColor = bgColor.startsWith('#') && bgColor.length === 7;
@@ -90,17 +91,25 @@ export const CellView: React.FC<Props> = React.memo(({ cell, colors, isDanger })
         </Defs>
         <Rect width="100%" height="100%" rx="8" fill={`url(#${gradientId})`} />
       </Svg>
-      <Animated.Text
-        style={[
-          styles.text,
-          {
-            color: colors.cellTextColor,
-            fontSize: content.type === 'special' ? CELL_SIZE * 0.4 : CELL_SIZE * 0.45,
-          },
-        ]}
-      >
-        {label}
-      </Animated.Text>
+      {content.type === 'special' && (content.special === 'bomb' || content.special === 'freeze' || content.special === 'wild') ? (
+        <SpecialBlockIconSVG
+          type={content.special}
+          size={CELL_SIZE * 0.6}
+          color={colors.cellTextColor}
+        />
+      ) : (
+        <Animated.Text
+          style={[
+            styles.text,
+            {
+              color: colors.cellTextColor,
+              fontSize: content.type === 'special' ? CELL_SIZE * 0.4 : CELL_SIZE * 0.45,
+            },
+          ]}
+        >
+          {label}
+        </Animated.Text>
+      )}
     </Animated.View>
   );
 });

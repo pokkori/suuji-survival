@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CellContent, ThemeColors, NumberValue } from '../types';
 import { CELL_SIZE } from '../constants/grid';
-import { SPECIAL_BLOCK_ICONS, SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
+import { SPECIAL_BLOCK_COLORS } from '../engine/specialBlocks';
+import { SpecialBlockIconSVG } from './SpecialBlockIconSVG';
 
 interface Props {
   nextRows: CellContent[][];
@@ -25,15 +26,22 @@ export const NextQueue: React.FC<Props> = ({ nextRows, colors }) => {
               const bgColor = cell.type === 'number'
                 ? colors.cellColors[cell.value]
                 : SPECIAL_BLOCK_COLORS[cell.special];
-              const label = cell.type === 'number'
-                ? String(cell.value)
-                : SPECIAL_BLOCK_ICONS[cell.special];
+              const specialType = cell.type === 'special' ? cell.special : null;
+              const isSpecialSvg = specialType === 'bomb' || specialType === 'freeze' || specialType === 'wild';
 
               return (
                 <View key={colIdx} style={[styles.preview, { backgroundColor: bgColor }]}>
-                  <Text style={[styles.previewText, { color: colors.cellTextColor }]}>
-                    {label}
-                  </Text>
+                  {isSpecialSvg ? (
+                    <SpecialBlockIconSVG
+                      type={specialType as 'bomb' | 'freeze' | 'wild'}
+                      size={18}
+                      color={colors.cellTextColor}
+                    />
+                  ) : (
+                    <Text style={[styles.previewText, { color: colors.cellTextColor }]}>
+                      {cell.type === 'number' ? String(cell.value) : '×2'}
+                    </Text>
+                  )}
                 </View>
               );
             })}

@@ -142,7 +142,7 @@ export default function GameScreen() {
   useEffect(() => {
     // Start BGM when playing begins
     if (gameState.phase === 'playing' && prevPhaseRef.current !== 'playing' && prevPhaseRef.current !== 'fever' && prevPhaseRef.current !== 'cascading') {
-      playBGM('normal');
+      playBGM(104);
     }
     // Game over haptic + sound
     if (gameState.phase === 'gameover' && prevPhaseRef.current !== 'gameover') {
@@ -199,7 +199,7 @@ export default function GameScreen() {
     if (gameState.fever.isActive && !prevFeverRef.current) {
       hapticFever();
       playFeverSound();
-      playBGM('fever');
+      playBGM(148);
       // Start fever hue rotation
       feverHue.value = 0;
       feverHue.value = withRepeat(
@@ -208,7 +208,7 @@ export default function GameScreen() {
         false,
       );
     } else if (!gameState.fever.isActive && prevFeverRef.current) {
-      playBGM('normal');
+      playBGM(104);
       cancelAnimation(feverHue);
       feverHue.value = 0;
     }

@@ -74,17 +74,17 @@ export const ScoreBar: React.FC<Props> = ({ score, combo, fever, colors, freezeM
       </View>
       {freezeMs > 0 && (
         <Text style={styles.freezeText}>
-          ❄️ FREEZE: {(freezeMs / 1000).toFixed(1)}s
+          ICE FREEZE: {(freezeMs / 1000).toFixed(1)}s
         </Text>
       )}
       {dangerLevel >= 2 && (
         <Text style={styles.criticalText}>
-          💀 あと少し！ブロックを消せ！
+          x あと少し！ブロックを消せ！
         </Text>
       )}
       {dangerLevel === 1 && (
         <Text style={styles.warningText}>
-          ⚡ DANGER — ブロックが迫っている！
+          LV DANGER — ブロックが迫っている！
         </Text>
       )}
     </View>

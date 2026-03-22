@@ -134,7 +134,41 @@ let bgmGainNode: GainNode | null = null;
 let bgmEnabled = true;
 let bgmVolume = 0.3;
 
-export function playBGM(mode: 'normal' | 'fever' = 'normal'): void {
+// Am-G-F-E コード進行（Aマイナースケール）
+// メロディー: 8音×2小節ループ
+const MELODY_NOTES = [440, 494, 523, 494, 440, 392, 349, 392]; // A4-B4-C5-B4-A4-G4-F4-G4
+// ベース: Am-G-F-E ルート音（1小節=2拍）
+const BASS_NOTES   = [110, 98, 87.3, 82.4]; // A2-G2-F2-E2
+// コードパッド: Am-G-F-E ボイシング（3声）
+const CHORD_VOICINGS: [number, number, number][] = [
+  [220, 262, 330], // Am: A3-C4-E4
+  [196, 247, 294], // G:  G3-B3-D4
+  [175, 220, 262], // F:  F3-A3-C4
+  [165, 208, 247], // E:  E3-G#3-B3
+];
+
+function scheduleVoice(
+  ctx: AudioContext,
+  masterGain: GainNode,
+  freq: number,
+  startTime: number,
+  duration: number,
+  type: OscillatorType,
+  vol: number,
+) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+  g.gain.setValueAtTime(vol, startTime);
+  g.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+export function playBGM(bpm: number = 104): void {
   const ctx = getAudioContext();
   if (!ctx || !bgmEnabled) return;
   stopBGM();
@@ -144,27 +178,45 @@ export function playBGM(mode: 'normal' | 'fever' = 'normal'): void {
   gain.connect(ctx.destination);
   bgmGainNode = gain;
 
-  // アルペジオ音列（Cメジャー: C4-E4-G4-A4-G4-E4）
-  const notes = mode === 'fever'
-    ? [523, 659, 784, 1047, 784, 659] // 高BPM
-    : [262, 330, 392, 523, 392, 330]; // 通常BPM
-  const bpm = mode === 'fever' ? 180 : 120;
-  const beatMs = 60000 / bpm;
+  const beatSec = 60 / bpm;        // 1拍の秒数
+  const chordBeats = 2;             // 1コードあたり2拍
+  const melodyBeats = 1;            // メロディーは1拍毎
   let step = 0;
 
-  const playBGMNote = () => {
+  const tickBGM = () => {
     if (!ctx || !bgmGainNode) return;
-    const osc = ctx.createOscillator();
-    osc.type = 'triangle';
-    osc.frequency.value = notes[step % notes.length];
-    osc.connect(bgmGainNode);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.12);
+    const now = ctx.currentTime;
+    const melodyIdx = step % MELODY_NOTES.length;
+    const chordIdx  = Math.floor(step / chordBeats) % CHORD_VOICINGS.length;
+    const bassIdx   = Math.floor(step / chordBeats) % BASS_NOTES.length;
+
+    // メロディー声部（triangle・中音量）
+    scheduleVoice(ctx, bgmGainNode, MELODY_NOTES[melodyIdx], now, beatSec * 0.85, 'triangle', bgmVolume * 0.4);
+
+    // コードパッド声部（sine・小音量・和音の変わり目のみ）
+    if (step % chordBeats === 0) {
+      const voicing = CHORD_VOICINGS[chordIdx];
+      for (const f of voicing) {
+        scheduleVoice(ctx, bgmGainNode, f, now, beatSec * chordBeats * 0.9, 'sine', bgmVolume * 0.15);
+      }
+      // ベース声部（sawtooth・低音）
+      scheduleVoice(ctx, bgmGainNode, BASS_NOTES[bassIdx], now, beatSec * chordBeats * 0.8, 'sawtooth', bgmVolume * 0.25);
+    }
+
+    // パーカッション声部（noise風: short square burst）
+    if (step % 2 === 0) {
+      // キック代わりの低音バースト
+      scheduleVoice(ctx, bgmGainNode, 60, now, 0.06, 'square', bgmVolume * 0.3);
+    } else {
+      // スネア代わりの高音バースト
+      scheduleVoice(ctx, bgmGainNode, 220, now, 0.04, 'square', bgmVolume * 0.1);
+    }
+
     step++;
   };
 
-  playBGMNote();
-  bgmIntervalId = setInterval(playBGMNote, beatMs);
+  tickBGM();
+  bgmIntervalId = setInterval(tickBGM, (60 / bpm) * 1000);
 }
 
 export function stopBGM(): void {

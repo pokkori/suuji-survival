@@ -51,7 +51,7 @@ export default function RankingScreen() {
     return true;
   });
 
-  const medals = ['🥇', '🥈', '🥉'];
+  const medals = ['1st', '2nd', '3rd'];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -83,7 +83,7 @@ export default function RankingScreen() {
         borderRadius: 12, padding: 12, alignItems: 'center',
       }}>
         <Text style={{ color: colors.accentColor, fontSize: 13, fontWeight: 'bold' }}>
-          🌐 あなたの記録を全国と比較
+          あなたの記録を全国と比較
         </Text>
         <Text style={{ color: colors.cellTextColor, fontSize: 11, opacity: 0.7, marginTop: 2 }}>
           スコア5,000以上 = 上位30%相当の実力です
@@ -109,7 +109,7 @@ export default function RankingScreen() {
                 x{entry.maxCombo} combo | {entry.maxChainLevel ?? 1}段カスケード | {new Date(entry.date).toLocaleDateString('ja-JP')}
               </Text>
               <Text style={[styles.entryPercentile, { color: colors.accentColor }]}>
-                📊 {getEstimatedPercentile(entry.score)}
+                {getEstimatedPercentile(entry.score)}
               </Text>
             </View>
           </View>
@@ -117,7 +117,7 @@ export default function RankingScreen() {
       </ScrollView>
 
       <Text style={[styles.note, { color: colors.cellTextColor }]}>
-        📊 推定順位: 国内パズルゲームプレイヤー約50万人の分布に基づく参考値
+        推定順位: 国内パズルゲームプレイヤー約50万人の分布に基づく参考値
       </Text>
     </SafeAreaView>
   );

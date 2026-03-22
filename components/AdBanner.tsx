@@ -13,7 +13,7 @@ export const AdBanner: React.FC = () => {
       activeOpacity={0.8}
     >
       <Text style={styles.webBannerText}>
-        📱 数字サバイバル — 友達に紹介してスコアを競おう！
+        数字サバイバル — 友達に紹介してスコアを競おう！
       </Text>
     </TouchableOpacity>
   );
