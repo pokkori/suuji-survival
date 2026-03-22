@@ -244,15 +244,6 @@ export const GameOverOverlay: React.FC<Props> = ({
         )}
 
         <TouchableOpacity
-          style={{ minHeight: 44, backgroundColor: '#4CAF50', borderRadius: 12, padding: 12, marginTop: 0, marginBottom: 8, alignItems: 'center', width: '100%' }}
-          accessibilityLabel="リワード広告を見て復活する"
-          accessibilityRole="button"
-          onPress={() => Alert.alert('まもなく実装', 'App Store配信後にリワード広告が利用可能になります')}
-        >
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>リワード広告で復活</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[styles.button, {
             backgroundColor: streakDays >= 2 ? '#FF6B35' : '#4A90E2',
           }]}
