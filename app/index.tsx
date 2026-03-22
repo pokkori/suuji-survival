@@ -118,8 +118,10 @@ export default function TitleScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.secondaryButton, { borderColor: colors.accentColor }]}
+            style={[styles.secondaryButton, { borderColor: colors.accentColor, minHeight: 44 }]}
             onPress={() => router.push('/daily')}
+            accessibilityLabel="デイリーチャレンジをプレイする"
+            accessibilityRole="button"
           >
             <Text style={[styles.secondaryButtonText, { color: colors.accentColor }]}>
               デイリー
